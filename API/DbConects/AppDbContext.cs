@@ -1,7 +1,7 @@
-﻿using API.DbConects.Entities.Hoa_Don;
-using API.DbConects.Entities.Khuyen_Mai;
-using API.DbConects.Entities.San_Pham;
-using API.DbConects.Entities.Tai_Khoan;
+﻿using API.DbConects.Entities.Entities_Hoa_Don;
+using API.DbConects.Entities.Entities_Khuyen_Mai;
+using API.DbConects.Entities.Entities_San_Pham;
+using API.DbConects.Entities.Entities_Tai_Khoan;
 using Microsoft.EntityFrameworkCore;
 
 namespace API.DbConects
