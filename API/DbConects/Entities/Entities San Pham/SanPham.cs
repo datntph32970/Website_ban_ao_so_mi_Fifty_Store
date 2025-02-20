@@ -16,12 +16,16 @@ namespace API.DbConects.Entities.Entities_San_Pham
         public DateTime ngay_tao { get; set; }
         public Guid? id_nguoi_sua { get; set; }
         public DateTime? ngay_sua { get; set; }
+
         [ForeignKey("ChatLieu")]
         public Guid id_chat_lieu { get; set; }
+
         [ForeignKey("KieuDang")]
         public Guid id_kieu_dang { get; set; }
+
         [ForeignKey("ThuongHieu")]
         public Guid id_thuong_hieu { get; set; }
+
         [ForeignKey("XuatXu")]
         public Guid id_xuat_xu { get; set; }
 

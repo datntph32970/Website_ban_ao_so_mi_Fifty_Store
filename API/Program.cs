@@ -14,9 +14,17 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 #region services
 builder.Services.AddScoped<ITaiKhoanServices, TaiKhoanServices>();
-builder.Services.AddScoped<IThuongHieuServices, ThuongHieuServices>();
+
 builder.Services.AddScoped(typeof(IBaseRepositories<>), typeof(BaseRepositories<>));
 builder.Services.AddScoped<IJwtServices, JwtServices>();
+
+builder.Services.AddScoped<ISanPhamService,SanPhamService>();
+builder.Services.AddScoped<IThuongHieuServices, ThuongHieuServices>();
+builder.Services.AddScoped<IChatLieuService, ChatLieuService>();
+builder.Services.AddScoped<IXuatXuService, XuatXuService>();
+builder.Services.AddScoped<IKieuDangService, KieuDangService>();
+
+
 
 #endregion
 #region authentication

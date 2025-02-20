@@ -12,7 +12,7 @@ namespace API.Services.SanPham_Services
         Task<(bool,string)> Add(Them_ThuongHieuDTO thuongHieuDTO, string mataikhoantao);
         Task<(bool, string)> Update(Sua_ThuongHieuDTO thuongHieuDTO, string mataikhoansua);
         Task<bool> Delete(Guid id);
-        Task<string> TaoMaThuongHieu();
+        Task<string> TaoMaThuongHieu();     
     }
     public class ThuongHieuServices : IThuongHieuServices
     {
