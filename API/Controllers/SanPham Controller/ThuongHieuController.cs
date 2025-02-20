@@ -38,8 +38,6 @@ namespace API.Controllers.SanPham_Controller
             if (thuongHieuDTO.ten_thuong_hieu == null)
                 return BadRequest("Yêu cầu nhập tên thương hiệu");
 
-            // Extract user ID from token
-
             var token = HttpContext.Request.Headers["Authorization"].FirstOrDefault()?.Split(" ").Last();
 
             var mataikhoan = _jwtService.GetMaTaiKhoanFromToken(token);
