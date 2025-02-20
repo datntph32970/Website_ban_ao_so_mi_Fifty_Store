@@ -12,7 +12,8 @@ namespace API.Services.JwtServices
         {
             _secret = configuration["Jwt:Key"];
         }
-        public string GenerateJwtToken(string username, string role)
+
+        public string GenerateJwtToken(Guid userId, string username, string role, string mataikhoan)
         {
             var tokenHandler = new JwtSecurityTokenHandler();
             var key = Encoding.ASCII.GetBytes(_secret);
@@ -20,8 +21,10 @@ namespace API.Services.JwtServices
             {
                 Subject = new ClaimsIdentity(new[]
                 {
+                    new Claim(ClaimTypes.NameIdentifier, userId.ToString()),
                     new Claim(ClaimTypes.Name, username),
-                    new Claim(ClaimTypes.Role, role)
+                    new Claim(ClaimTypes.Role, role),
+                    new Claim("mataikhoan", mataikhoan)
                 }),
                 Expires = DateTime.UtcNow.AddHours(1),
                 SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
@@ -29,6 +32,7 @@ namespace API.Services.JwtServices
             var token = tokenHandler.CreateToken(tokenDescriptor);
             return tokenHandler.WriteToken(token);
         }
+
         public bool ValidateToken(string token)
         {
             var tokenHandler = new JwtSecurityTokenHandler();
@@ -50,6 +54,7 @@ namespace API.Services.JwtServices
             }
             return true;
         }
+
         public ClaimsPrincipal GetPrincipalFromExpiredToken(string token)
         {
             var tokenValidationParameters = new TokenValidationParameters
@@ -66,6 +71,28 @@ namespace API.Services.JwtServices
             if (jwtSecurityToken == null || !jwtSecurityToken.Header.Alg.Equals(SecurityAlgorithms.HmacSha256, StringComparison.InvariantCultureIgnoreCase))
                 throw new SecurityTokenException("Invalid token");
             return principal;
+        }
+
+        public Guid? GetUserIdFromToken(string token)
+        {
+            if (token == null)
+                return null;
+
+            var jwtToken = new JwtSecurityTokenHandler().ReadToken(token) as JwtSecurityToken;
+            var userIdClaim = jwtToken?.Claims.FirstOrDefault(claim => claim.Type == ClaimTypes.NameIdentifier);
+
+            return userIdClaim != null ? Guid.Parse(userIdClaim.Value) : (Guid?)null;
+        }
+
+        public string GetMaTaiKhoanFromToken(string token)
+        {
+            if (token == null)
+                return null;
+
+            var jwtToken = new JwtSecurityTokenHandler().ReadToken(token) as JwtSecurityToken;
+            var maTaiKhoanClaim = jwtToken?.Claims.FirstOrDefault(claim => claim.Type == "mataikhoan");
+
+            return maTaiKhoanClaim?.Value;
         }
     }
 }

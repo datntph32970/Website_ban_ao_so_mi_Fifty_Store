@@ -22,7 +22,7 @@ namespace API.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
-            modelBuilder.Entity("API.DbConects.Entities.Hoa_Don.GioHangChiTiet", b =>
+            modelBuilder.Entity("API.DbConects.Entities.Entities_Hoa_Don.GioHangChiTiet", b =>
                 {
                     b.Property<Guid>("id_gio_hang_chi_tiet")
                         .ValueGeneratedOnAdd()
@@ -49,7 +49,7 @@ namespace API.Migrations
                     b.ToTable("GioHangChiTiets");
                 });
 
-            modelBuilder.Entity("API.DbConects.Entities.Hoa_Don.HoaDon", b =>
+            modelBuilder.Entity("API.DbConects.Entities.Entities_Hoa_Don.HoaDon", b =>
                 {
                     b.Property<Guid>("id_hoa_don")
                         .ValueGeneratedOnAdd()
@@ -121,7 +121,7 @@ namespace API.Migrations
                     b.ToTable("HoaDons");
                 });
 
-            modelBuilder.Entity("API.DbConects.Entities.Hoa_Don.HoaDonChiTiet", b =>
+            modelBuilder.Entity("API.DbConects.Entities.Entities_Hoa_Don.HoaDonChiTiet", b =>
                 {
                     b.Property<Guid>("id_hoa_don_chi_tiet")
                         .ValueGeneratedOnAdd()
@@ -162,7 +162,7 @@ namespace API.Migrations
                     b.ToTable("HoaDonChiTiets");
                 });
 
-            modelBuilder.Entity("API.DbConects.Entities.Hoa_Don.PhuongThucThanhToan", b =>
+            modelBuilder.Entity("API.DbConects.Entities.Entities_Hoa_Don.PhuongThucThanhToan", b =>
                 {
                     b.Property<Guid>("id_phuong_thuc_thanh_toan")
                         .ValueGeneratedOnAdd()
@@ -188,7 +188,7 @@ namespace API.Migrations
                     b.ToTable("PhuongThucThanhToans");
                 });
 
-            modelBuilder.Entity("API.DbConects.Entities.Hoa_Don.TrangThaiHoaDon", b =>
+            modelBuilder.Entity("API.DbConects.Entities.Entities_Hoa_Don.TrangThaiHoaDon", b =>
                 {
                     b.Property<Guid>("id_trang_thai_hoa_don")
                         .ValueGeneratedOnAdd()
@@ -214,16 +214,10 @@ namespace API.Migrations
                     b.ToTable("TrangThaiHoaDons");
                 });
 
-            modelBuilder.Entity("API.DbConects.Entities.Khuyen_Mai.GiamGia", b =>
+            modelBuilder.Entity("API.DbConects.Entities.Entities_Khuyen_Mai.GiamGia", b =>
                 {
                     b.Property<Guid>("id_giam_gia")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid?>("NhanVienid_nhan_vien")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid?>("NhanVienid_nhan_vien1")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<Guid>("id_nguoi_cap_nhat")
@@ -262,10 +256,6 @@ namespace API.Migrations
 
                     b.HasKey("id_giam_gia");
 
-                    b.HasIndex("NhanVienid_nhan_vien");
-
-                    b.HasIndex("NhanVienid_nhan_vien1");
-
                     b.HasIndex("id_nguoi_cap_nhat");
 
                     b.HasIndex("id_nguoi_tao");
@@ -273,16 +263,10 @@ namespace API.Migrations
                     b.ToTable("GiamGias");
                 });
 
-            modelBuilder.Entity("API.DbConects.Entities.Khuyen_Mai.GiamGiaSanPhamChiTiet", b =>
+            modelBuilder.Entity("API.DbConects.Entities.Entities_Khuyen_Mai.GiamGiaSanPhamChiTiet", b =>
                 {
                     b.Property<Guid>("id_giam_gia_san_pham_chi_tiet")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid?>("NhanVienid_nhan_vien")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid?>("NhanVienid_nhan_vien1")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<Guid>("id_giam_gia")
@@ -305,10 +289,6 @@ namespace API.Migrations
 
                     b.HasKey("id_giam_gia_san_pham_chi_tiet");
 
-                    b.HasIndex("NhanVienid_nhan_vien");
-
-                    b.HasIndex("NhanVienid_nhan_vien1");
-
                     b.HasIndex("id_giam_gia");
 
                     b.HasIndex("id_nguoi_cap_nhat");
@@ -321,16 +301,10 @@ namespace API.Migrations
                     b.ToTable("GiamGiaSanPhamChiTiets");
                 });
 
-            modelBuilder.Entity("API.DbConects.Entities.Khuyen_Mai.KhuyenMai", b =>
+            modelBuilder.Entity("API.DbConects.Entities.Entities_Khuyen_Mai.KhuyenMai", b =>
                 {
                     b.Property<Guid>("id_khuyen_mai")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid?>("NhanVienid_nhan_vien")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid?>("NhanVienid_nhan_vien1")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<decimal>("gia_tri_giam")
@@ -388,10 +362,6 @@ namespace API.Migrations
 
                     b.HasKey("id_khuyen_mai");
 
-                    b.HasIndex("NhanVienid_nhan_vien");
-
-                    b.HasIndex("NhanVienid_nhan_vien1");
-
                     b.HasIndex("id_nguoi_sua");
 
                     b.HasIndex("id_nguoi_tao");
@@ -399,16 +369,10 @@ namespace API.Migrations
                     b.ToTable("KhuyenMais");
                 });
 
-            modelBuilder.Entity("API.DbConects.Entities.San_Pham.ChatLieu", b =>
+            modelBuilder.Entity("API.DbConects.Entities.Entities_San_Pham.ChatLieu", b =>
                 {
                     b.Property<Guid>("id_chat_lieu")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid?>("NhanVienid_nhan_vien")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid?>("NhanVienid_nhan_vien1")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<Guid?>("id_nguoi_sua")
@@ -437,10 +401,6 @@ namespace API.Migrations
 
                     b.HasKey("id_chat_lieu");
 
-                    b.HasIndex("NhanVienid_nhan_vien");
-
-                    b.HasIndex("NhanVienid_nhan_vien1");
-
                     b.HasIndex("id_nguoi_sua");
 
                     b.HasIndex("id_nguoi_tao");
@@ -448,16 +408,10 @@ namespace API.Migrations
                     b.ToTable("ChatLieus");
                 });
 
-            modelBuilder.Entity("API.DbConects.Entities.San_Pham.HinhAnh", b =>
+            modelBuilder.Entity("API.DbConects.Entities.Entities_San_Pham.HinhAnh", b =>
                 {
                     b.Property<Guid>("id_hinh_anh")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid?>("NhanVienid_nhan_vien")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid?>("NhanVienid_nhan_vien1")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<Guid?>("id_nguoi_sua")
@@ -493,10 +447,6 @@ namespace API.Migrations
 
                     b.HasKey("id_hinh_anh");
 
-                    b.HasIndex("NhanVienid_nhan_vien");
-
-                    b.HasIndex("NhanVienid_nhan_vien1");
-
                     b.HasIndex("id_nguoi_sua");
 
                     b.HasIndex("id_nguoi_tao");
@@ -506,16 +456,10 @@ namespace API.Migrations
                     b.ToTable("HinhAnhs");
                 });
 
-            modelBuilder.Entity("API.DbConects.Entities.San_Pham.KichCo", b =>
+            modelBuilder.Entity("API.DbConects.Entities.Entities_San_Pham.KichCo", b =>
                 {
                     b.Property<Guid>("id_kich_co")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid?>("NhanVienid_nhan_vien")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid?>("NhanVienid_nhan_vien1")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<Guid?>("id_nguoi_sua")
@@ -544,10 +488,6 @@ namespace API.Migrations
 
                     b.HasKey("id_kich_co");
 
-                    b.HasIndex("NhanVienid_nhan_vien");
-
-                    b.HasIndex("NhanVienid_nhan_vien1");
-
                     b.HasIndex("id_nguoi_sua");
 
                     b.HasIndex("id_nguoi_tao");
@@ -555,16 +495,10 @@ namespace API.Migrations
                     b.ToTable("KichCos");
                 });
 
-            modelBuilder.Entity("API.DbConects.Entities.San_Pham.KieuDang", b =>
+            modelBuilder.Entity("API.DbConects.Entities.Entities_San_Pham.KieuDang", b =>
                 {
                     b.Property<Guid>("id_kieu_dang")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid?>("NhanVienid_nhan_vien")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid?>("NhanVienid_nhan_vien1")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<Guid?>("id_nguoi_sua")
@@ -593,10 +527,6 @@ namespace API.Migrations
 
                     b.HasKey("id_kieu_dang");
 
-                    b.HasIndex("NhanVienid_nhan_vien");
-
-                    b.HasIndex("NhanVienid_nhan_vien1");
-
                     b.HasIndex("id_nguoi_sua");
 
                     b.HasIndex("id_nguoi_tao");
@@ -604,16 +534,10 @@ namespace API.Migrations
                     b.ToTable("KieuDangs");
                 });
 
-            modelBuilder.Entity("API.DbConects.Entities.San_Pham.MauSac", b =>
+            modelBuilder.Entity("API.DbConects.Entities.Entities_San_Pham.MauSac", b =>
                 {
                     b.Property<Guid>("id_mau_sac")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid?>("NhanVienid_nhan_vien")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid?>("NhanVienid_nhan_vien1")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<Guid?>("id_nguoi_sua")
@@ -642,10 +566,6 @@ namespace API.Migrations
 
                     b.HasKey("id_mau_sac");
 
-                    b.HasIndex("NhanVienid_nhan_vien");
-
-                    b.HasIndex("NhanVienid_nhan_vien1");
-
                     b.HasIndex("id_nguoi_sua");
 
                     b.HasIndex("id_nguoi_tao");
@@ -653,16 +573,10 @@ namespace API.Migrations
                     b.ToTable("MauSacs");
                 });
 
-            modelBuilder.Entity("API.DbConects.Entities.San_Pham.SanPham", b =>
+            modelBuilder.Entity("API.DbConects.Entities.Entities_San_Pham.SanPham", b =>
                 {
                     b.Property<Guid>("id_san_pham")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid?>("NhanVienid_nhan_vien")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid?>("NhanVienid_nhan_vien1")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<Guid>("id_chat_lieu")
@@ -707,10 +621,6 @@ namespace API.Migrations
 
                     b.HasKey("id_san_pham");
 
-                    b.HasIndex("NhanVienid_nhan_vien");
-
-                    b.HasIndex("NhanVienid_nhan_vien1");
-
                     b.HasIndex("id_chat_lieu");
 
                     b.HasIndex("id_kieu_dang");
@@ -726,16 +636,10 @@ namespace API.Migrations
                     b.ToTable("SanPhams");
                 });
 
-            modelBuilder.Entity("API.DbConects.Entities.San_Pham.SanPhamChiTiet", b =>
+            modelBuilder.Entity("API.DbConects.Entities.Entities_San_Pham.SanPhamChiTiet", b =>
                 {
                     b.Property<Guid>("id_san_pham_chi_tiet")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid?>("NhanVienid_nhan_vien")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid?>("NhanVienid_nhan_vien1")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<decimal>("gia_ban")
@@ -781,10 +685,6 @@ namespace API.Migrations
 
                     b.HasKey("id_san_pham_chi_tiet");
 
-                    b.HasIndex("NhanVienid_nhan_vien");
-
-                    b.HasIndex("NhanVienid_nhan_vien1");
-
                     b.HasIndex("id_kich_co");
 
                     b.HasIndex("id_mau_sac");
@@ -798,16 +698,10 @@ namespace API.Migrations
                     b.ToTable("SanPhamChiTiets");
                 });
 
-            modelBuilder.Entity("API.DbConects.Entities.San_Pham.ThuongHieu", b =>
+            modelBuilder.Entity("API.DbConects.Entities.Entities_San_Pham.ThuongHieu", b =>
                 {
                     b.Property<Guid>("id_thuong_hieu")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid?>("NhanVienid_nhan_vien")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid?>("NhanVienid_nhan_vien1")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<Guid?>("id_nguoi_sua")
@@ -836,10 +730,6 @@ namespace API.Migrations
 
                     b.HasKey("id_thuong_hieu");
 
-                    b.HasIndex("NhanVienid_nhan_vien");
-
-                    b.HasIndex("NhanVienid_nhan_vien1");
-
                     b.HasIndex("id_nguoi_sua");
 
                     b.HasIndex("id_nguoi_tao");
@@ -847,16 +737,10 @@ namespace API.Migrations
                     b.ToTable("ThuongHieus");
                 });
 
-            modelBuilder.Entity("API.DbConects.Entities.San_Pham.XuatXu", b =>
+            modelBuilder.Entity("API.DbConects.Entities.Entities_San_Pham.XuatXu", b =>
                 {
                     b.Property<Guid>("id_xuat_xu")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid?>("NhanVienid_nhan_vien")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid?>("NhanVienid_nhan_vien1")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<Guid?>("id_nguoi_sua")
@@ -885,10 +769,6 @@ namespace API.Migrations
 
                     b.HasKey("id_xuat_xu");
 
-                    b.HasIndex("NhanVienid_nhan_vien");
-
-                    b.HasIndex("NhanVienid_nhan_vien1");
-
                     b.HasIndex("id_nguoi_sua");
 
                     b.HasIndex("id_nguoi_tao");
@@ -896,7 +776,7 @@ namespace API.Migrations
                     b.ToTable("XuatXus");
                 });
 
-            modelBuilder.Entity("API.DbConects.Entities.Tai_Khoan.DiaChi", b =>
+            modelBuilder.Entity("API.DbConects.Entities.Entities_Tai_Khoan.DiaChi", b =>
                 {
                     b.Property<Guid>("id_dia_chi")
                         .ValueGeneratedOnAdd()
@@ -936,7 +816,7 @@ namespace API.Migrations
                     b.ToTable("DiaChis");
                 });
 
-            modelBuilder.Entity("API.DbConects.Entities.Tai_Khoan.KhachHang", b =>
+            modelBuilder.Entity("API.DbConects.Entities.Entities_Tai_Khoan.KhachHang", b =>
                 {
                     b.Property<Guid>("id_khach_hang")
                         .ValueGeneratedOnAdd()
@@ -980,7 +860,7 @@ namespace API.Migrations
                     b.ToTable("KhachHangs");
                 });
 
-            modelBuilder.Entity("API.DbConects.Entities.Tai_Khoan.NhanVien", b =>
+            modelBuilder.Entity("API.DbConects.Entities.Entities_Tai_Khoan.NhanVien", b =>
                 {
                     b.Property<Guid>("id_nhan_vien")
                         .ValueGeneratedOnAdd()
@@ -1037,9 +917,26 @@ namespace API.Migrations
                         .IsUnique();
 
                     b.ToTable("NhanViens");
+
+                    b.HasData(
+                        new
+                        {
+                            id_nhan_vien = new Guid("33333333-3333-3333-3333-333333333333"),
+                            cccd = "000000000000",
+                            email = "nthanhdat7112004@gmail.com",
+                            gioi_tinh = "Nam",
+                            id_nguoi_tao = new Guid("11111111-1111-1111-1111-111111111111"),
+                            id_tai_khoan = new Guid("22222222-2222-2222-2222-222222222222"),
+                            ma_nhan_vien = "TK00000001",
+                            ngay_sinh = new DateTime(2004, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            ngay_tao = new DateTime(2025, 2, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            so_dien_thoai = "0111111111",
+                            ten_nhan_vien = "họ và tên nhân viên 1",
+                            trang_thai = "HoatDong"
+                        });
                 });
 
-            modelBuilder.Entity("API.DbConects.Entities.Tai_Khoan.TaiKhoan", b =>
+            modelBuilder.Entity("API.DbConects.Entities.Entities_Tai_Khoan.TaiKhoan", b =>
                 {
                     b.Property<Guid>("id_tai_khoan")
                         .ValueGeneratedOnAdd()
@@ -1068,17 +965,37 @@ namespace API.Migrations
                     b.HasKey("id_tai_khoan");
 
                     b.ToTable("TaiKhoans");
+
+                    b.HasData(
+                        new
+                        {
+                            id_tai_khoan = new Guid("11111111-1111-1111-1111-111111111111"),
+                            chuc_vu = "Admin",
+                            ma_tai_khoan = "TK00000000",
+                            mat_khau = "8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918",
+                            ten_dang_nhap = "admin",
+                            trang_thai = "HoatDong"
+                        },
+                        new
+                        {
+                            id_tai_khoan = new Guid("22222222-2222-2222-2222-222222222222"),
+                            chuc_vu = "NhanVien",
+                            ma_tai_khoan = "TK00000001",
+                            mat_khau = "fa5a1d3e67d2193b86bc68c7db41bd84f242fe4e41146ef4a4a5441254d2a3f7",
+                            ten_dang_nhap = "nhanvien",
+                            trang_thai = "HoatDong"
+                        });
                 });
 
-            modelBuilder.Entity("API.DbConects.Entities.Hoa_Don.GioHangChiTiet", b =>
+            modelBuilder.Entity("API.DbConects.Entities.Entities_Hoa_Don.GioHangChiTiet", b =>
                 {
-                    b.HasOne("API.DbConects.Entities.Tai_Khoan.KhachHang", "KhachHang")
+                    b.HasOne("API.DbConects.Entities.Entities_Tai_Khoan.KhachHang", "KhachHang")
                         .WithMany("GioHangChiTiets")
                         .HasForeignKey("id_khach_hang")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("API.DbConects.Entities.San_Pham.SanPhamChiTiet", "SanPhamChiTiet")
+                    b.HasOne("API.DbConects.Entities.Entities_San_Pham.SanPhamChiTiet", "SanPhamChiTiet")
                         .WithMany("GioHangChiTiets")
                         .HasForeignKey("id_san_pham_chi_tiet")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1089,31 +1006,31 @@ namespace API.Migrations
                     b.Navigation("SanPhamChiTiet");
                 });
 
-            modelBuilder.Entity("API.DbConects.Entities.Hoa_Don.HoaDon", b =>
+            modelBuilder.Entity("API.DbConects.Entities.Entities_Hoa_Don.HoaDon", b =>
                 {
-                    b.HasOne("API.DbConects.Entities.Tai_Khoan.KhachHang", "KhachHang")
+                    b.HasOne("API.DbConects.Entities.Entities_Tai_Khoan.KhachHang", "KhachHang")
                         .WithMany("HoaDons")
                         .HasForeignKey("id_khach_hang")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("API.DbConects.Entities.Khuyen_Mai.KhuyenMai", "KhuyenMai")
+                    b.HasOne("API.DbConects.Entities.Entities_Khuyen_Mai.KhuyenMai", "KhuyenMai")
                         .WithMany("HoaDons")
                         .HasForeignKey("id_khuyen_mai")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("API.DbConects.Entities.Tai_Khoan.NhanVien", "NhanVien")
+                    b.HasOne("API.DbConects.Entities.Entities_Tai_Khoan.NhanVien", "NhanVien")
                         .WithMany("TaoHoaDons")
                         .HasForeignKey("id_nhan_vien");
 
-                    b.HasOne("API.DbConects.Entities.Hoa_Don.PhuongThucThanhToan", "PhuongThucThanhToan")
+                    b.HasOne("API.DbConects.Entities.Entities_Hoa_Don.PhuongThucThanhToan", "PhuongThucThanhToan")
                         .WithMany("HoaDons")
                         .HasForeignKey("id_phuong_thuc_thanh_toan")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("API.DbConects.Entities.Hoa_Don.TrangThaiHoaDon", "TrangThaiHoaDon")
+                    b.HasOne("API.DbConects.Entities.Entities_Hoa_Don.TrangThaiHoaDon", "TrangThaiHoaDon")
                         .WithMany("HoaDons")
                         .HasForeignKey("id_trang_thai_hoa_don")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1130,15 +1047,15 @@ namespace API.Migrations
                     b.Navigation("TrangThaiHoaDon");
                 });
 
-            modelBuilder.Entity("API.DbConects.Entities.Hoa_Don.HoaDonChiTiet", b =>
+            modelBuilder.Entity("API.DbConects.Entities.Entities_Hoa_Don.HoaDonChiTiet", b =>
                 {
-                    b.HasOne("API.DbConects.Entities.Hoa_Don.HoaDon", "HoaDon")
+                    b.HasOne("API.DbConects.Entities.Entities_Hoa_Don.HoaDon", "HoaDon")
                         .WithMany("HoaDonChiTiets")
                         .HasForeignKey("id_hoa_don")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("API.DbConects.Entities.San_Pham.SanPhamChiTiet", "SanPhamChiTiets")
+                    b.HasOne("API.DbConects.Entities.Entities_San_Pham.SanPhamChiTiet", "SanPhamChiTiets")
                         .WithMany("HoaDonChiTiets")
                         .HasForeignKey("id_san_pham_chi_tiet")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1149,24 +1066,16 @@ namespace API.Migrations
                     b.Navigation("SanPhamChiTiets");
                 });
 
-            modelBuilder.Entity("API.DbConects.Entities.Khuyen_Mai.GiamGia", b =>
+            modelBuilder.Entity("API.DbConects.Entities.Entities_Khuyen_Mai.GiamGia", b =>
                 {
-                    b.HasOne("API.DbConects.Entities.Tai_Khoan.NhanVien", null)
+                    b.HasOne("API.DbConects.Entities.Entities_Tai_Khoan.NhanVien", "NguoiSua")
                         .WithMany("SuaGiamGias")
-                        .HasForeignKey("NhanVienid_nhan_vien");
-
-                    b.HasOne("API.DbConects.Entities.Tai_Khoan.NhanVien", null)
-                        .WithMany("TaoGiamGias")
-                        .HasForeignKey("NhanVienid_nhan_vien1");
-
-                    b.HasOne("API.DbConects.Entities.Tai_Khoan.NhanVien", "NguoiSua")
-                        .WithMany()
                         .HasForeignKey("id_nguoi_cap_nhat")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("API.DbConects.Entities.Tai_Khoan.NhanVien", "NguoiTao")
-                        .WithMany()
+                    b.HasOne("API.DbConects.Entities.Entities_Tai_Khoan.NhanVien", "NguoiTao")
+                        .WithMany("TaoGiamGias")
                         .HasForeignKey("id_nguoi_tao")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
@@ -1176,37 +1085,29 @@ namespace API.Migrations
                     b.Navigation("NguoiTao");
                 });
 
-            modelBuilder.Entity("API.DbConects.Entities.Khuyen_Mai.GiamGiaSanPhamChiTiet", b =>
+            modelBuilder.Entity("API.DbConects.Entities.Entities_Khuyen_Mai.GiamGiaSanPhamChiTiet", b =>
                 {
-                    b.HasOne("API.DbConects.Entities.Tai_Khoan.NhanVien", null)
-                        .WithMany("SuaGiamGiaSanPhamChiTiets")
-                        .HasForeignKey("NhanVienid_nhan_vien");
-
-                    b.HasOne("API.DbConects.Entities.Tai_Khoan.NhanVien", null)
-                        .WithMany("TaoGiamGiaSanPhamChiTiets")
-                        .HasForeignKey("NhanVienid_nhan_vien1");
-
-                    b.HasOne("API.DbConects.Entities.Khuyen_Mai.GiamGia", "GiamGia")
+                    b.HasOne("API.DbConects.Entities.Entities_Khuyen_Mai.GiamGia", "GiamGia")
                         .WithMany("GiamGiaSanPhamChiTiets")
                         .HasForeignKey("id_giam_gia")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("API.DbConects.Entities.Tai_Khoan.NhanVien", "NguoiSua")
-                        .WithMany()
+                    b.HasOne("API.DbConects.Entities.Entities_Tai_Khoan.NhanVien", "NguoiSua")
+                        .WithMany("SuaGiamGiaSanPhamChiTiets")
                         .HasForeignKey("id_nguoi_cap_nhat")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("API.DbConects.Entities.Tai_Khoan.NhanVien", "NguoiTao")
-                        .WithMany()
+                    b.HasOne("API.DbConects.Entities.Entities_Tai_Khoan.NhanVien", "NguoiTao")
+                        .WithMany("TaoGiamGiaSanPhamChiTiets")
                         .HasForeignKey("id_nguoi_tao")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("API.DbConects.Entities.San_Pham.SanPhamChiTiet", "SanPhamChiTiet")
+                    b.HasOne("API.DbConects.Entities.Entities_San_Pham.SanPhamChiTiet", "SanPhamChiTiet")
                         .WithOne("GiamGiaSanPhamChiTiets")
-                        .HasForeignKey("API.DbConects.Entities.Khuyen_Mai.GiamGiaSanPhamChiTiet", "id_san_pham_chi_tiet")
+                        .HasForeignKey("API.DbConects.Entities.Entities_Khuyen_Mai.GiamGiaSanPhamChiTiet", "id_san_pham_chi_tiet")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -1219,23 +1120,15 @@ namespace API.Migrations
                     b.Navigation("SanPhamChiTiet");
                 });
 
-            modelBuilder.Entity("API.DbConects.Entities.Khuyen_Mai.KhuyenMai", b =>
+            modelBuilder.Entity("API.DbConects.Entities.Entities_Khuyen_Mai.KhuyenMai", b =>
                 {
-                    b.HasOne("API.DbConects.Entities.Tai_Khoan.NhanVien", null)
+                    b.HasOne("API.DbConects.Entities.Entities_Tai_Khoan.NhanVien", "NguoiSua")
                         .WithMany("SuaKhuyenMais")
-                        .HasForeignKey("NhanVienid_nhan_vien");
+                        .HasForeignKey("id_nguoi_sua")
+                        .OnDelete(DeleteBehavior.Restrict);
 
-                    b.HasOne("API.DbConects.Entities.Tai_Khoan.NhanVien", null)
+                    b.HasOne("API.DbConects.Entities.Entities_Tai_Khoan.NhanVien", "NguoiTao")
                         .WithMany("TaoKhuyenMais")
-                        .HasForeignKey("NhanVienid_nhan_vien1");
-
-                    b.HasOne("API.DbConects.Entities.Tai_Khoan.NhanVien", "NguoiSua")
-                        .WithMany()
-                        .HasForeignKey("id_nguoi_sua")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("API.DbConects.Entities.Tai_Khoan.NhanVien", "NguoiTao")
-                        .WithMany()
                         .HasForeignKey("id_nguoi_tao")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
@@ -1245,23 +1138,15 @@ namespace API.Migrations
                     b.Navigation("NguoiTao");
                 });
 
-            modelBuilder.Entity("API.DbConects.Entities.San_Pham.ChatLieu", b =>
+            modelBuilder.Entity("API.DbConects.Entities.Entities_San_Pham.ChatLieu", b =>
                 {
-                    b.HasOne("API.DbConects.Entities.Tai_Khoan.NhanVien", null)
+                    b.HasOne("API.DbConects.Entities.Entities_Tai_Khoan.NhanVien", "NguoiSua")
                         .WithMany("SuaChatLieus")
-                        .HasForeignKey("NhanVienid_nhan_vien");
-
-                    b.HasOne("API.DbConects.Entities.Tai_Khoan.NhanVien", null)
-                        .WithMany("TaoChatLieus")
-                        .HasForeignKey("NhanVienid_nhan_vien1");
-
-                    b.HasOne("API.DbConects.Entities.Tai_Khoan.NhanVien", "NguoiSua")
-                        .WithMany()
                         .HasForeignKey("id_nguoi_sua")
                         .OnDelete(DeleteBehavior.Restrict);
 
-                    b.HasOne("API.DbConects.Entities.Tai_Khoan.NhanVien", "NguoiTao")
-                        .WithMany()
+                    b.HasOne("API.DbConects.Entities.Entities_Tai_Khoan.NhanVien", "NguoiTao")
+                        .WithMany("TaoChatLieus")
                         .HasForeignKey("id_nguoi_tao")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
@@ -1271,28 +1156,20 @@ namespace API.Migrations
                     b.Navigation("NguoiTao");
                 });
 
-            modelBuilder.Entity("API.DbConects.Entities.San_Pham.HinhAnh", b =>
+            modelBuilder.Entity("API.DbConects.Entities.Entities_San_Pham.HinhAnh", b =>
                 {
-                    b.HasOne("API.DbConects.Entities.Tai_Khoan.NhanVien", null)
+                    b.HasOne("API.DbConects.Entities.Entities_Tai_Khoan.NhanVien", "NguoiSua")
                         .WithMany("SuaHinhAnhs")
-                        .HasForeignKey("NhanVienid_nhan_vien");
-
-                    b.HasOne("API.DbConects.Entities.Tai_Khoan.NhanVien", null)
-                        .WithMany("TaoHinhAnhs")
-                        .HasForeignKey("NhanVienid_nhan_vien1");
-
-                    b.HasOne("API.DbConects.Entities.Tai_Khoan.NhanVien", "NguoiSua")
-                        .WithMany()
                         .HasForeignKey("id_nguoi_sua")
                         .OnDelete(DeleteBehavior.Restrict);
 
-                    b.HasOne("API.DbConects.Entities.Tai_Khoan.NhanVien", "NguoiTao")
-                        .WithMany()
+                    b.HasOne("API.DbConects.Entities.Entities_Tai_Khoan.NhanVien", "NguoiTao")
+                        .WithMany("TaoHinhAnhs")
                         .HasForeignKey("id_nguoi_tao")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("API.DbConects.Entities.San_Pham.SanPhamChiTiet", "SanPhamChiTiets")
+                    b.HasOne("API.DbConects.Entities.Entities_San_Pham.SanPhamChiTiet", "SanPhamChiTiets")
                         .WithMany("HinhAnhs")
                         .HasForeignKey("id_san_pham_chi_tiet")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1305,23 +1182,15 @@ namespace API.Migrations
                     b.Navigation("SanPhamChiTiets");
                 });
 
-            modelBuilder.Entity("API.DbConects.Entities.San_Pham.KichCo", b =>
+            modelBuilder.Entity("API.DbConects.Entities.Entities_San_Pham.KichCo", b =>
                 {
-                    b.HasOne("API.DbConects.Entities.Tai_Khoan.NhanVien", null)
+                    b.HasOne("API.DbConects.Entities.Entities_Tai_Khoan.NhanVien", "NguoiSua")
                         .WithMany("SuaKichCos")
-                        .HasForeignKey("NhanVienid_nhan_vien");
+                        .HasForeignKey("id_nguoi_sua")
+                        .OnDelete(DeleteBehavior.Restrict);
 
-                    b.HasOne("API.DbConects.Entities.Tai_Khoan.NhanVien", null)
+                    b.HasOne("API.DbConects.Entities.Entities_Tai_Khoan.NhanVien", "NguoiTao")
                         .WithMany("TaoKichCos")
-                        .HasForeignKey("NhanVienid_nhan_vien1");
-
-                    b.HasOne("API.DbConects.Entities.Tai_Khoan.NhanVien", "NguoiSua")
-                        .WithMany()
-                        .HasForeignKey("id_nguoi_sua")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("API.DbConects.Entities.Tai_Khoan.NhanVien", "NguoiTao")
-                        .WithMany()
                         .HasForeignKey("id_nguoi_tao")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
@@ -1331,23 +1200,15 @@ namespace API.Migrations
                     b.Navigation("NguoiTao");
                 });
 
-            modelBuilder.Entity("API.DbConects.Entities.San_Pham.KieuDang", b =>
+            modelBuilder.Entity("API.DbConects.Entities.Entities_San_Pham.KieuDang", b =>
                 {
-                    b.HasOne("API.DbConects.Entities.Tai_Khoan.NhanVien", null)
+                    b.HasOne("API.DbConects.Entities.Entities_Tai_Khoan.NhanVien", "NguoiSua")
                         .WithMany("SuaKieuDangs")
-                        .HasForeignKey("NhanVienid_nhan_vien");
+                        .HasForeignKey("id_nguoi_sua")
+                        .OnDelete(DeleteBehavior.Restrict);
 
-                    b.HasOne("API.DbConects.Entities.Tai_Khoan.NhanVien", null)
+                    b.HasOne("API.DbConects.Entities.Entities_Tai_Khoan.NhanVien", "NguoiTao")
                         .WithMany("TaoKieuDangs")
-                        .HasForeignKey("NhanVienid_nhan_vien1");
-
-                    b.HasOne("API.DbConects.Entities.Tai_Khoan.NhanVien", "NguoiSua")
-                        .WithMany()
-                        .HasForeignKey("id_nguoi_sua")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("API.DbConects.Entities.Tai_Khoan.NhanVien", "NguoiTao")
-                        .WithMany()
                         .HasForeignKey("id_nguoi_tao")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
@@ -1357,23 +1218,15 @@ namespace API.Migrations
                     b.Navigation("NguoiTao");
                 });
 
-            modelBuilder.Entity("API.DbConects.Entities.San_Pham.MauSac", b =>
+            modelBuilder.Entity("API.DbConects.Entities.Entities_San_Pham.MauSac", b =>
                 {
-                    b.HasOne("API.DbConects.Entities.Tai_Khoan.NhanVien", null)
+                    b.HasOne("API.DbConects.Entities.Entities_Tai_Khoan.NhanVien", "NguoiSua")
                         .WithMany("SuaMauSacs")
-                        .HasForeignKey("NhanVienid_nhan_vien");
-
-                    b.HasOne("API.DbConects.Entities.Tai_Khoan.NhanVien", null)
-                        .WithMany("TaoMauSacs")
-                        .HasForeignKey("NhanVienid_nhan_vien1");
-
-                    b.HasOne("API.DbConects.Entities.Tai_Khoan.NhanVien", "NguoiSua")
-                        .WithMany()
                         .HasForeignKey("id_nguoi_sua")
                         .OnDelete(DeleteBehavior.Restrict);
 
-                    b.HasOne("API.DbConects.Entities.Tai_Khoan.NhanVien", "NguoiTao")
-                        .WithMany()
+                    b.HasOne("API.DbConects.Entities.Entities_Tai_Khoan.NhanVien", "NguoiTao")
+                        .WithMany("TaoMauSacs")
                         .HasForeignKey("id_nguoi_tao")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
@@ -1383,46 +1236,38 @@ namespace API.Migrations
                     b.Navigation("NguoiTao");
                 });
 
-            modelBuilder.Entity("API.DbConects.Entities.San_Pham.SanPham", b =>
+            modelBuilder.Entity("API.DbConects.Entities.Entities_San_Pham.SanPham", b =>
                 {
-                    b.HasOne("API.DbConects.Entities.Tai_Khoan.NhanVien", null)
-                        .WithMany("SuaSanPhams")
-                        .HasForeignKey("NhanVienid_nhan_vien");
-
-                    b.HasOne("API.DbConects.Entities.Tai_Khoan.NhanVien", null)
-                        .WithMany("TaoSanPhams")
-                        .HasForeignKey("NhanVienid_nhan_vien1");
-
-                    b.HasOne("API.DbConects.Entities.San_Pham.ChatLieu", "ChatLieu")
+                    b.HasOne("API.DbConects.Entities.Entities_San_Pham.ChatLieu", "ChatLieu")
                         .WithMany("SanPhams")
                         .HasForeignKey("id_chat_lieu")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("API.DbConects.Entities.San_Pham.KieuDang", "KieuDang")
+                    b.HasOne("API.DbConects.Entities.Entities_San_Pham.KieuDang", "KieuDang")
                         .WithMany("SanPhams")
                         .HasForeignKey("id_kieu_dang")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("API.DbConects.Entities.Tai_Khoan.NhanVien", "NguoiSua")
-                        .WithMany()
+                    b.HasOne("API.DbConects.Entities.Entities_Tai_Khoan.NhanVien", "NguoiSua")
+                        .WithMany("SuaSanPhams")
                         .HasForeignKey("id_nguoi_sua")
                         .OnDelete(DeleteBehavior.Restrict);
 
-                    b.HasOne("API.DbConects.Entities.Tai_Khoan.NhanVien", "NguoiTao")
-                        .WithMany()
+                    b.HasOne("API.DbConects.Entities.Entities_Tai_Khoan.NhanVien", "NguoiTao")
+                        .WithMany("TaoSanPhams")
                         .HasForeignKey("id_nguoi_tao")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("API.DbConects.Entities.San_Pham.ThuongHieu", "ThuongHieu")
+                    b.HasOne("API.DbConects.Entities.Entities_San_Pham.ThuongHieu", "ThuongHieu")
                         .WithMany("SanPhams")
                         .HasForeignKey("id_thuong_hieu")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("API.DbConects.Entities.San_Pham.XuatXu", "XuatXu")
+                    b.HasOne("API.DbConects.Entities.Entities_San_Pham.XuatXu", "XuatXu")
                         .WithMany("SanPhams")
                         .HasForeignKey("id_xuat_xu")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1441,40 +1286,32 @@ namespace API.Migrations
                     b.Navigation("XuatXu");
                 });
 
-            modelBuilder.Entity("API.DbConects.Entities.San_Pham.SanPhamChiTiet", b =>
+            modelBuilder.Entity("API.DbConects.Entities.Entities_San_Pham.SanPhamChiTiet", b =>
                 {
-                    b.HasOne("API.DbConects.Entities.Tai_Khoan.NhanVien", null)
-                        .WithMany("SuaSanPhamChiTiets")
-                        .HasForeignKey("NhanVienid_nhan_vien");
-
-                    b.HasOne("API.DbConects.Entities.Tai_Khoan.NhanVien", null)
-                        .WithMany("TaoSanPhamChiTiets")
-                        .HasForeignKey("NhanVienid_nhan_vien1");
-
-                    b.HasOne("API.DbConects.Entities.San_Pham.KichCo", "KichCo")
+                    b.HasOne("API.DbConects.Entities.Entities_San_Pham.KichCo", "KichCo")
                         .WithMany("SanPhamChiTiets")
                         .HasForeignKey("id_kich_co")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("API.DbConects.Entities.San_Pham.MauSac", "MauSac")
+                    b.HasOne("API.DbConects.Entities.Entities_San_Pham.MauSac", "MauSac")
                         .WithMany("SanPhamChiTiets")
                         .HasForeignKey("id_mau_sac")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("API.DbConects.Entities.Tai_Khoan.NhanVien", "NguoiSua")
-                        .WithMany()
+                    b.HasOne("API.DbConects.Entities.Entities_Tai_Khoan.NhanVien", "NguoiSua")
+                        .WithMany("SuaSanPhamChiTiets")
                         .HasForeignKey("id_nguoi_sua")
                         .OnDelete(DeleteBehavior.Restrict);
 
-                    b.HasOne("API.DbConects.Entities.Tai_Khoan.NhanVien", "NguoiTao")
-                        .WithMany()
+                    b.HasOne("API.DbConects.Entities.Entities_Tai_Khoan.NhanVien", "NguoiTao")
+                        .WithMany("TaoSanPhamChiTiets")
                         .HasForeignKey("id_nguoi_tao")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("API.DbConects.Entities.San_Pham.SanPham", "SanPham")
+                    b.HasOne("API.DbConects.Entities.Entities_San_Pham.SanPham", "SanPham")
                         .WithMany("SanPhamChiTiets")
                         .HasForeignKey("id_san_pham")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1491,23 +1328,15 @@ namespace API.Migrations
                     b.Navigation("SanPham");
                 });
 
-            modelBuilder.Entity("API.DbConects.Entities.San_Pham.ThuongHieu", b =>
+            modelBuilder.Entity("API.DbConects.Entities.Entities_San_Pham.ThuongHieu", b =>
                 {
-                    b.HasOne("API.DbConects.Entities.Tai_Khoan.NhanVien", null)
+                    b.HasOne("API.DbConects.Entities.Entities_Tai_Khoan.NhanVien", "NguoiSua")
                         .WithMany("SuaThuongHieus")
-                        .HasForeignKey("NhanVienid_nhan_vien");
+                        .HasForeignKey("id_nguoi_sua")
+                        .OnDelete(DeleteBehavior.Restrict);
 
-                    b.HasOne("API.DbConects.Entities.Tai_Khoan.NhanVien", null)
+                    b.HasOne("API.DbConects.Entities.Entities_Tai_Khoan.NhanVien", "NguoiTao")
                         .WithMany("TaoThuongHieus")
-                        .HasForeignKey("NhanVienid_nhan_vien1");
-
-                    b.HasOne("API.DbConects.Entities.Tai_Khoan.NhanVien", "NguoiSua")
-                        .WithMany()
-                        .HasForeignKey("id_nguoi_sua")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("API.DbConects.Entities.Tai_Khoan.NhanVien", "NguoiTao")
-                        .WithMany()
                         .HasForeignKey("id_nguoi_tao")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
@@ -1517,23 +1346,15 @@ namespace API.Migrations
                     b.Navigation("NguoiTao");
                 });
 
-            modelBuilder.Entity("API.DbConects.Entities.San_Pham.XuatXu", b =>
+            modelBuilder.Entity("API.DbConects.Entities.Entities_San_Pham.XuatXu", b =>
                 {
-                    b.HasOne("API.DbConects.Entities.Tai_Khoan.NhanVien", null)
+                    b.HasOne("API.DbConects.Entities.Entities_Tai_Khoan.NhanVien", "NguoiSua")
                         .WithMany("SuaXuatXus")
-                        .HasForeignKey("NhanVienid_nhan_vien");
-
-                    b.HasOne("API.DbConects.Entities.Tai_Khoan.NhanVien", null)
-                        .WithMany("TaoXuatXus")
-                        .HasForeignKey("NhanVienid_nhan_vien1");
-
-                    b.HasOne("API.DbConects.Entities.Tai_Khoan.NhanVien", "NguoiSua")
-                        .WithMany()
                         .HasForeignKey("id_nguoi_sua")
                         .OnDelete(DeleteBehavior.Restrict);
 
-                    b.HasOne("API.DbConects.Entities.Tai_Khoan.NhanVien", "NguoiTao")
-                        .WithMany()
+                    b.HasOne("API.DbConects.Entities.Entities_Tai_Khoan.NhanVien", "NguoiTao")
+                        .WithMany("TaoXuatXus")
                         .HasForeignKey("id_nguoi_tao")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
@@ -1543,9 +1364,9 @@ namespace API.Migrations
                     b.Navigation("NguoiTao");
                 });
 
-            modelBuilder.Entity("API.DbConects.Entities.Tai_Khoan.DiaChi", b =>
+            modelBuilder.Entity("API.DbConects.Entities.Entities_Tai_Khoan.DiaChi", b =>
                 {
-                    b.HasOne("API.DbConects.Entities.Tai_Khoan.KhachHang", "KhachHang")
+                    b.HasOne("API.DbConects.Entities.Entities_Tai_Khoan.KhachHang", "KhachHang")
                         .WithMany("DiaChis")
                         .HasForeignKey("id_khach_hang")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1554,28 +1375,28 @@ namespace API.Migrations
                     b.Navigation("KhachHang");
                 });
 
-            modelBuilder.Entity("API.DbConects.Entities.Tai_Khoan.KhachHang", b =>
+            modelBuilder.Entity("API.DbConects.Entities.Entities_Tai_Khoan.KhachHang", b =>
                 {
-                    b.HasOne("API.DbConects.Entities.Tai_Khoan.TaiKhoan", "TaiKhoan")
+                    b.HasOne("API.DbConects.Entities.Entities_Tai_Khoan.TaiKhoan", "TaiKhoan")
                         .WithOne("KhachHang")
-                        .HasForeignKey("API.DbConects.Entities.Tai_Khoan.KhachHang", "id_tai_khoan")
+                        .HasForeignKey("API.DbConects.Entities.Entities_Tai_Khoan.KhachHang", "id_tai_khoan")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("TaiKhoan");
                 });
 
-            modelBuilder.Entity("API.DbConects.Entities.Tai_Khoan.NhanVien", b =>
+            modelBuilder.Entity("API.DbConects.Entities.Entities_Tai_Khoan.NhanVien", b =>
                 {
-                    b.HasOne("API.DbConects.Entities.Tai_Khoan.TaiKhoan", "NguoiTao")
+                    b.HasOne("API.DbConects.Entities.Entities_Tai_Khoan.TaiKhoan", "NguoiTao")
                         .WithMany()
                         .HasForeignKey("id_nguoi_tao")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("API.DbConects.Entities.Tai_Khoan.TaiKhoan", "TaiKhoanNhanVien")
+                    b.HasOne("API.DbConects.Entities.Entities_Tai_Khoan.TaiKhoan", "TaiKhoanNhanVien")
                         .WithOne("NhanVien")
-                        .HasForeignKey("API.DbConects.Entities.Tai_Khoan.NhanVien", "id_tai_khoan")
+                        .HasForeignKey("API.DbConects.Entities.Entities_Tai_Khoan.NhanVien", "id_tai_khoan")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
@@ -1584,57 +1405,57 @@ namespace API.Migrations
                     b.Navigation("TaiKhoanNhanVien");
                 });
 
-            modelBuilder.Entity("API.DbConects.Entities.Hoa_Don.HoaDon", b =>
+            modelBuilder.Entity("API.DbConects.Entities.Entities_Hoa_Don.HoaDon", b =>
                 {
                     b.Navigation("HoaDonChiTiets");
                 });
 
-            modelBuilder.Entity("API.DbConects.Entities.Hoa_Don.PhuongThucThanhToan", b =>
+            modelBuilder.Entity("API.DbConects.Entities.Entities_Hoa_Don.PhuongThucThanhToan", b =>
                 {
                     b.Navigation("HoaDons");
                 });
 
-            modelBuilder.Entity("API.DbConects.Entities.Hoa_Don.TrangThaiHoaDon", b =>
+            modelBuilder.Entity("API.DbConects.Entities.Entities_Hoa_Don.TrangThaiHoaDon", b =>
                 {
                     b.Navigation("HoaDons");
                 });
 
-            modelBuilder.Entity("API.DbConects.Entities.Khuyen_Mai.GiamGia", b =>
+            modelBuilder.Entity("API.DbConects.Entities.Entities_Khuyen_Mai.GiamGia", b =>
                 {
                     b.Navigation("GiamGiaSanPhamChiTiets");
                 });
 
-            modelBuilder.Entity("API.DbConects.Entities.Khuyen_Mai.KhuyenMai", b =>
+            modelBuilder.Entity("API.DbConects.Entities.Entities_Khuyen_Mai.KhuyenMai", b =>
                 {
                     b.Navigation("HoaDons");
                 });
 
-            modelBuilder.Entity("API.DbConects.Entities.San_Pham.ChatLieu", b =>
+            modelBuilder.Entity("API.DbConects.Entities.Entities_San_Pham.ChatLieu", b =>
                 {
                     b.Navigation("SanPhams");
                 });
 
-            modelBuilder.Entity("API.DbConects.Entities.San_Pham.KichCo", b =>
+            modelBuilder.Entity("API.DbConects.Entities.Entities_San_Pham.KichCo", b =>
                 {
                     b.Navigation("SanPhamChiTiets");
                 });
 
-            modelBuilder.Entity("API.DbConects.Entities.San_Pham.KieuDang", b =>
+            modelBuilder.Entity("API.DbConects.Entities.Entities_San_Pham.KieuDang", b =>
                 {
                     b.Navigation("SanPhams");
                 });
 
-            modelBuilder.Entity("API.DbConects.Entities.San_Pham.MauSac", b =>
+            modelBuilder.Entity("API.DbConects.Entities.Entities_San_Pham.MauSac", b =>
                 {
                     b.Navigation("SanPhamChiTiets");
                 });
 
-            modelBuilder.Entity("API.DbConects.Entities.San_Pham.SanPham", b =>
+            modelBuilder.Entity("API.DbConects.Entities.Entities_San_Pham.SanPham", b =>
                 {
                     b.Navigation("SanPhamChiTiets");
                 });
 
-            modelBuilder.Entity("API.DbConects.Entities.San_Pham.SanPhamChiTiet", b =>
+            modelBuilder.Entity("API.DbConects.Entities.Entities_San_Pham.SanPhamChiTiet", b =>
                 {
                     b.Navigation("GiamGiaSanPhamChiTiets");
 
@@ -1645,17 +1466,17 @@ namespace API.Migrations
                     b.Navigation("HoaDonChiTiets");
                 });
 
-            modelBuilder.Entity("API.DbConects.Entities.San_Pham.ThuongHieu", b =>
+            modelBuilder.Entity("API.DbConects.Entities.Entities_San_Pham.ThuongHieu", b =>
                 {
                     b.Navigation("SanPhams");
                 });
 
-            modelBuilder.Entity("API.DbConects.Entities.San_Pham.XuatXu", b =>
+            modelBuilder.Entity("API.DbConects.Entities.Entities_San_Pham.XuatXu", b =>
                 {
                     b.Navigation("SanPhams");
                 });
 
-            modelBuilder.Entity("API.DbConects.Entities.Tai_Khoan.KhachHang", b =>
+            modelBuilder.Entity("API.DbConects.Entities.Entities_Tai_Khoan.KhachHang", b =>
                 {
                     b.Navigation("DiaChis");
 
@@ -1664,7 +1485,7 @@ namespace API.Migrations
                     b.Navigation("HoaDons");
                 });
 
-            modelBuilder.Entity("API.DbConects.Entities.Tai_Khoan.NhanVien", b =>
+            modelBuilder.Entity("API.DbConects.Entities.Entities_Tai_Khoan.NhanVien", b =>
                 {
                     b.Navigation("SuaChatLieus");
 
@@ -1717,7 +1538,7 @@ namespace API.Migrations
                     b.Navigation("TaoXuatXus");
                 });
 
-            modelBuilder.Entity("API.DbConects.Entities.Tai_Khoan.TaiKhoan", b =>
+            modelBuilder.Entity("API.DbConects.Entities.Entities_Tai_Khoan.TaiKhoan", b =>
                 {
                     b.Navigation("KhachHang");
 

@@ -102,7 +102,7 @@ namespace API.Services.TaiKhoan_Services
             };
             _taiKhoanRepositories.Add(newTaiKhoan);
             _khachHangRepositories.Add(newKhachHang);
-            var token = _jwtServices.GenerateJwtToken(newTaiKhoan.ten_dang_nhap,ChucVuTaiKhoan.KhachHang.ToString());
+            var token = _jwtServices.GenerateJwtToken(newTaiKhoan.id_tai_khoan,newTaiKhoan.ten_dang_nhap,ChucVuTaiKhoan.KhachHang.ToString(),newTaiKhoan.ma_tai_khoan);
             return (true, token);
         }
 
@@ -121,7 +121,7 @@ namespace API.Services.TaiKhoan_Services
             {
                 return (false, "Mật khẩu không đúng");
             }
-            var token = _jwtServices.GenerateJwtToken(taiKhoan.ten_dang_nhap, taiKhoan.chuc_vu);
+            var token = _jwtServices.GenerateJwtToken(taiKhoan.id_tai_khoan,taiKhoan.ten_dang_nhap, taiKhoan.chuc_vu,taiKhoan.ma_tai_khoan);
             return (true, token);
 
         }

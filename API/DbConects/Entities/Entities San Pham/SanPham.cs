@@ -12,10 +12,8 @@ namespace API.DbConects.Entities.Entities_San_Pham
         public string ten_san_pham { get; set; }
         public string mo_ta { get; set; }
         public string trang_thai { get; set; }
-        [ForeignKey("NguoiTao")]
         public Guid id_nguoi_tao { get; set; }
         public DateTime ngay_tao { get; set; }
-        [ForeignKey("NguoiSua")]
         public Guid? id_nguoi_sua { get; set; }
         public DateTime? ngay_sua { get; set; }
         [ForeignKey("ChatLieu")]
@@ -31,7 +29,9 @@ namespace API.DbConects.Entities.Entities_San_Pham
         public virtual KieuDang? KieuDang { get; set; }
         public virtual ThuongHieu? ThuongHieu { get; set; }
         public virtual XuatXu? XuatXu { get; set; }
+        [ForeignKey("id_nguoi_tao")]
         public virtual NhanVien? NguoiTao { get; set; }
+        [ForeignKey("id_nguoi_sua")]
         public virtual NhanVien? NguoiSua { get; set; }
         public virtual ICollection<SanPhamChiTiet> SanPhamChiTiets { get; set; }
     }

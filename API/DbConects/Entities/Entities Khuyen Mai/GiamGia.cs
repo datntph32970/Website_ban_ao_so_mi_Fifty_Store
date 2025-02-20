@@ -16,12 +16,12 @@ namespace API.DbConects.Entities.Entities_Khuyen_Mai
         public string trang_thai {  get; set; }
         public DateTime ngay_tao { get; set; }
         public DateTime ngay_cap_nhat { get; set; }
-        [ForeignKey("NguoiTao")]
         public Guid id_nguoi_tao { get; set; }
-        [ForeignKey("NguoiSua")]
         public Guid id_nguoi_cap_nhat { get; set; }
         public virtual ICollection<GiamGiaSanPhamChiTiet> GiamGiaSanPhamChiTiets { get; set; }
+        [ForeignKey("id_nguoi_tao")]
         public virtual NhanVien? NguoiTao { get; set; }
+        [ForeignKey("id_nguoi_cap_nhat")]
         public virtual NhanVien? NguoiSua { get; set; }
     }
 }

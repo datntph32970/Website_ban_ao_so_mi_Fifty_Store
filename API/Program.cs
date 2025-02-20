@@ -1,6 +1,7 @@
 using API.DbConects;
 using API.Repositories;
 using API.Services.JwtServices;
+using API.Services.SanPham_Services;
 using API.Services.TaiKhoan_Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -13,6 +14,7 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 #region services
 builder.Services.AddScoped<ITaiKhoanServices, TaiKhoanServices>();
+builder.Services.AddScoped<IThuongHieuServices, ThuongHieuServices>();
 builder.Services.AddScoped(typeof(IBaseRepositories<>), typeof(BaseRepositories<>));
 builder.Services.AddScoped<IJwtServices, JwtServices>();
 

@@ -22,12 +22,12 @@ namespace API.DbConects.Entities.Entities_Khuyen_Mai
         public DateTime thoi_gian_ket_thuc { get; set; }
         public string trang_thai { get; set; }
         public DateTime ngay_tao { get; set; }
-        [ForeignKey("NguoiTao")]
         public Guid id_nguoi_tao { get; set; }
         public DateTime ngay_sua { get; set; }
-        [ForeignKey("NguoiSua")]
         public Guid? id_nguoi_sua { get; set; }
+        [ForeignKey("id_nguoi_tao")]
         public virtual NhanVien? NguoiSua { get; set; }
+        [ForeignKey("id_nguoi_sua")]
         public virtual NhanVien NguoiTao { get; set; }
         public virtual ICollection<HoaDon>? HoaDons { get; set; }
     }

@@ -11,14 +11,14 @@ namespace API.DbConects.Entities.Entities_San_Pham
         public string ma_kieu_dang { get; set; }
         public string ten_kieu_dang { get; set; }
         public string trang_thai { get; set; }
-        [ForeignKey("NguoiTao")]
         public Guid id_nguoi_tao { get; set; }
         public DateTime ngay_tao { get; set; }
-        [ForeignKey("NguoiSua")]
         public Guid? id_nguoi_sua { get; set; }
         public DateTime? ngay_sua { get; set; }
         public virtual ICollection<SanPham>? SanPhams { get; set; }
+        [ForeignKey("id_nguoi_tao")]
         public virtual NhanVien? NguoiTao { get; set; }
+        [ForeignKey("id_nguoi_sua")]
         public virtual NhanVien? NguoiSua { get; set; }
     }
 }

@@ -17,10 +17,8 @@ namespace API.DbConects.Entities.Entities_San_Pham
         public decimal gia_nhap { get; set; }
         public decimal so_tien_giam_gia_theo_chuong_trinh { get; set; }
         public string trang_thai { get; set; }
-        [ForeignKey("NguoiTao")]
         public Guid id_nguoi_tao { get; set; }
         public DateTime ngay_tao { get; set; }
-        [ForeignKey("NguoiSua")]
         public Guid? id_nguoi_sua { get; set; }
         public DateTime? ngay_sua { get; set; }
         [ForeignKey("SanPham")]
@@ -35,7 +33,9 @@ namespace API.DbConects.Entities.Entities_San_Pham
         public virtual ICollection<HinhAnh>? HinhAnhs { get; set; }
         public virtual ICollection<HoaDonChiTiet>? HoaDonChiTiets { get; set; }
         public virtual ICollection<GioHangChiTiet>? GioHangChiTiets { get; set; }
+        [ForeignKey("id_nguoi_tao")]
         public virtual NhanVien? NguoiTao { get; set; }
+        [ForeignKey("id_nguoi_sua")]
         public virtual NhanVien? NguoiSua { get; set; }
         public virtual GiamGiaSanPhamChiTiet? GiamGiaSanPhamChiTiets { get; set; }
     }
