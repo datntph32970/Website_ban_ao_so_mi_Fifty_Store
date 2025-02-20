@@ -1,4 +1,4 @@
-﻿using API.DbConects.DTO.HoaDon_DTO;
+﻿
 using API.DbConects.DTO.HoaDonDTO;
 using API.DbConects.Entities.Entities_Hoa_Don;
 using API.DbConects.Entities.Entities_Tai_Khoan;
@@ -38,9 +38,9 @@ namespace API.Services.HoaDon_Services
                 id_hoa_don = Guid.NewGuid(),
                 ma_hoa_don = await TaoMaHoaDon(),
                 ngay_tao = DateTime.Now,
-                id_nguoi_tao = idNhanVienTao.Value,
-                tong_tien = hoaDonDTO.tong_tien,
-                trang_thai = hoaDonDTO.trang_thai
+                id_nhan_vien = idNhanVienTao.Value,
+                tong_tien_phai_thanh_toan = hoaDonDTO.TongTienPhaiThanhToan,
+                id_trang_thai_hoa_don = hoaDonDTO.ID_TrangThaiHoaDon
             };
 
             var result = await _hoaDonRepository.Add(hoaDon);
@@ -60,12 +60,21 @@ namespace API.Services.HoaDon_Services
 
         public async Task<(bool, string)> Update(Sua_HoaDonDTO hoaDonDTO, string mataikhoansua)
         {
-            var hoaDon = await _hoaDonRepository.GetById(hoaDonDTO.id_hoa_don);
+            var hoaDon = await _hoaDonRepository.GetById(hoaDonDTO.ID_KhachHang);
             if (hoaDon == null) return (false, "Hóa đơn không tồn tại");
 
-            hoaDon.tong_tien = hoaDonDTO.tong_tien;
-            hoaDon.trang_thai = hoaDonDTO.trang_thai;
-            hoaDon.ngay_cap_nhat = DateTime.Now;
+            hoaDon.tong_tien_don_hang = hoaDonDTO.TongTienPhaiThanhToan;
+            if (Guid.TryParse(hoaDonDTO.TrangThaiHoaDon.ToString(), out Guid trangThaiId))
+            {
+                hoaDon.id_trang_thai_hoa_don = trangThaiId;
+            }
+            else
+            {
+                return (false, "Trạng thái hóa đơn không hợp lệ");
+            }
+
+
+            hoaDon.ngay_tao = DateTime.Now;
 
             var result = await _hoaDonRepository.Update(hoaDon);
             return result ? (true, "Cập nhật hóa đơn thành công") : (false, "Lỗi khi cập nhật hóa đơn");
@@ -75,7 +84,7 @@ namespace API.Services.HoaDon_Services
         {
             var hoaDon = await _hoaDonRepository.GetById(id);
             if (hoaDon == null) return false;
-            return await _hoaDonRepository.Delete(hoaDon);
+            return await _hoaDonRepository.Delete(hoaDon.id_hoa_don);
         }
 
         public async Task<string> TaoMaHoaDon()

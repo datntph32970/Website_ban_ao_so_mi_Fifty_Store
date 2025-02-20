@@ -22,6 +22,7 @@ namespace API.DbConects.DTO.HoaDonDTO
 
         public class Sua_HoaDonDTO
         {
+            public Guid ID_KhachHang { get; set; }
             public decimal TongTienDonHang { get; set; }
             public decimal SoTienKhuyenMai { get; set; }
             public string GhiChu { get; set; }
