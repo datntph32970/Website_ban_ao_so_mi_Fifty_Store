@@ -37,6 +37,7 @@ namespace API.DbConects
         public DbSet<HinhAnh> HinhAnhs { get; set; }
         public DbSet<ChatLieu> ChatLieus { get; set; }
         public DbSet<GiamGia> GiamGias { get; set; }
+        public DbSet<ThongKe> GiamGias { get; set; }
         public DbSet<GiamGiaSanPhamChiTiet> GiamGiaSanPhamChiTiets { get; set; }
         #endregion
 
