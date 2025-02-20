@@ -30,7 +30,7 @@ namespace API.Controllers.SanPham_Controller
         }
 
         [HttpPost("them-thuong-hieu")]
-        [Authorize(Roles = "Admin, NhanVien")]
+        [Authorize(Roles = "NhanVien")]
         public async Task<IActionResult> ThemThuongHieu(Them_ThuongHieuDTO thuongHieuDTO)
         {
             if (thuongHieuDTO == null)
