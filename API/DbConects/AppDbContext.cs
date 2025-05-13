@@ -1,9 +1,9 @@
-﻿using API.DbConects.DTO.Tai_Khoan_DTO;
+﻿
 using API.DbConects.Entities.Entities_Hoa_Don;
 using API.DbConects.Entities.Entities_Khuyen_Mai;
 using API.DbConects.Entities.Entities_San_Pham;
 using API.DbConects.Entities.Entities_Tai_Khoan;
-using API.Services.TaiKhoan_Services;
+using API.DbConects.DTOs.Admin.TaiKhoan;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Cryptography;
 using System.Text;
@@ -18,6 +18,7 @@ namespace API.DbConects
 
         #region DbSet
         public DbSet<GioHangChiTiet> GioHangChiTiets { get; set; }
+        public DbSet<DanhMuc> DanhMucs { get; set; }
         public DbSet<HoaDon> HoaDons { get; set; }
         public DbSet<HoaDonChiTiet> HoaDonChiTiets { get; set; }
         public DbSet<KhachHang> KhachHangs { get; set; }
@@ -25,7 +26,6 @@ namespace API.DbConects
         public DbSet<NhanVien> NhanViens { get; set; }
         public DbSet<PhuongThucThanhToan> PhuongThucThanhToans { get; set; }
         public DbSet<SanPhamChiTiet> SanPhamChiTiets { get; set; }
-        public DbSet<TrangThaiHoaDon> TrangThaiHoaDons { get; set; }
         public DbSet<TaiKhoan> TaiKhoans { get; set; }
         public DbSet<DiaChi> DiaChis { get; set; }
         public DbSet<XuatXu> XuatXus { get; set; }
@@ -37,7 +37,6 @@ namespace API.DbConects
         public DbSet<HinhAnh> HinhAnhs { get; set; }
         public DbSet<ChatLieu> ChatLieus { get; set; }
         public DbSet<GiamGia> GiamGias { get; set; }
-        public DbSet<GiamGiaSanPhamChiTiet> GiamGiaSanPhamChiTiets { get; set; }
         #endregion
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
@@ -59,7 +58,7 @@ namespace API.DbConects
                     id_tai_khoan = new Guid("11111111-1111-1111-1111-111111111111"),
                     chuc_vu = ChucVuTaiKhoan.Admin.ToString(),
                     mat_khau = BamMatKhau("admin"),
-                    ma_tai_khoan = "TK00000000",
+                    ma_tai_khoan = "TK00000001",
                     ten_dang_nhap = "admin",
                     trang_thai = TrangThaiTaiKhoan.HoatDong.ToString()
                 },
@@ -68,12 +67,29 @@ namespace API.DbConects
                     id_tai_khoan = new Guid("22222222-2222-2222-2222-222222222222"),
                     chuc_vu = ChucVuTaiKhoan.NhanVien.ToString(),
                     mat_khau = BamMatKhau("nhanvien"),
-                    ma_tai_khoan = "TK00000001",
+                    ma_tai_khoan = "TK00000002",
                     ten_dang_nhap = "nhanvien",
                     trang_thai = TrangThaiTaiKhoan.HoatDong.ToString()
                 }
             );
             modelBuilder.Entity<NhanVien>().HasData(
+                new NhanVien
+                {
+                    id_nhan_vien = new Guid("00000000-0000-0000-0000-000000000001"),
+                    id_tai_khoan = new Guid("11111111-1111-1111-1111-111111111111"),
+                    id_nguoi_tao = new Guid("11111111-1111-1111-1111-111111111111"),
+                    cccd = "000000000001",
+                    email = "datntph32970@gmail.com",
+                    gioi_tinh = GioiTinhTaiKhoan.Nam.ToString(),
+                    ma_nhan_vien = "TK00000001",
+                    ngay_sinh = DateTime.Parse("2004-07-11"),
+                    ngay_sua = null,
+                    ngay_tao = DateTime.Parse("2025-04-21"),
+                    so_dien_thoai = "0369104997",
+                    dia_chi = "Hà Nội",
+                    ten_nhan_vien = "họ và tên admin 1",
+                    trang_thai = TrangThaiTaiKhoan.HoatDong.ToString()
+                },
                 new NhanVien
                 {
                     id_nhan_vien = new Guid("33333333-3333-3333-3333-333333333333"),
@@ -82,39 +98,44 @@ namespace API.DbConects
                     cccd = "000000000000",
                     email = "nthanhdat7112004@gmail.com",
                     gioi_tinh = GioiTinhTaiKhoan.Nam.ToString(),
-                    ma_nhan_vien = "TK00000001",
+                    ma_nhan_vien = "TK00000002",
                     ngay_sinh = DateTime.Parse("2004-01-01"),
                     ngay_sua = null,
                     ngay_tao = DateTime.Parse("2025-02-01"),
                     so_dien_thoai = "0111111111",
+                    dia_chi = "Hà Nội",
                     ten_nhan_vien = "họ và tên nhân viên 1",
                     trang_thai = TrangThaiTaiKhoan.HoatDong.ToString()
                 }
             );
             #endregion
             #region config
-            modelBuilder.Entity<GiamGia>()
+            modelBuilder.Entity<HoaDon>()
                 .HasOne(g => g.NguoiTao)
-                .WithMany(nv => nv.TaoGiamGias)
+                .WithMany(nv => nv.TaoHoaDons)
                 .HasForeignKey(g => g.id_nguoi_tao)
+                .OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<HoaDon>()
+                .HasOne(g => g.NguoiSua)
+                .WithMany(nv => nv.SuaHoaDons)
+                .HasForeignKey(g => g.id_nguoi_sua)
+                .OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<DanhMuc>()
+                .HasOne(g => g.NguoiTao)
+                .WithMany(nv => nv.TaoDanhMucs)
+                .HasForeignKey(g => g.id_nguoi_tao)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<DanhMuc>()
+                .HasOne(g => g.NguoiSua)
+                .WithMany(nv => nv.SuaDanhMucs)
+                .HasForeignKey(g => g.id_nguoi_sua)
                 .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<GiamGia>()
                 .HasOne(g => g.NguoiSua)
                 .WithMany(nv => nv.SuaGiamGias)
                 .HasForeignKey(g => g.id_nguoi_cap_nhat)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            modelBuilder.Entity<GiamGiaSanPhamChiTiet>()
-                .HasOne(g => g.NguoiTao)
-                .WithMany(nv => nv.TaoGiamGiaSanPhamChiTiets)
-                .HasForeignKey(g => g.id_nguoi_tao)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            modelBuilder.Entity<GiamGiaSanPhamChiTiet>()
-                .HasOne(a => a.NguoiSua)
-                .WithMany(nv => nv.SuaGiamGiaSanPhamChiTiets)
-                .HasForeignKey(a => a.id_nguoi_cap_nhat)
                 .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<XuatXu>()
@@ -249,6 +270,7 @@ namespace API.DbConects
                 .HasForeignKey<KhachHang>(kh => kh.id_tai_khoan)
                 .OnDelete(DeleteBehavior.Restrict);
             #endregion
+
         }
         private string BamMatKhau(string matKhau)
         {
@@ -263,5 +285,6 @@ namespace API.DbConects
                 return sb.ToString();
             }
         }
+
     }
 }

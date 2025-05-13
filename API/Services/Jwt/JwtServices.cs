@@ -1,4 +1,7 @@
-﻿using Microsoft.IdentityModel.Tokens;
+﻿using API.DbConects.DTOs.Client.TaiKhoan;
+using API.DbConects.Entities.Entities_Tai_Khoan;
+using API.Repositories.Interfaces;
+using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
@@ -8,9 +11,13 @@ namespace API.Services.JwtServices
     public class JwtServices : IJwtServices
     {
         private readonly string _secret;
-        public JwtServices(IConfiguration configuration)
+        private readonly IBaseRepository<TaiKhoan> _taiKhoanRepository;
+        private readonly IBaseRepository<NhanVien> _nhanVienRepository;
+        public JwtServices(IConfiguration configuration, IBaseRepository<TaiKhoan> taiKhoanRepository, IBaseRepository<NhanVien> nhanVienRepository)
         {
             _secret = configuration["Jwt:Key"];
+            _taiKhoanRepository = taiKhoanRepository;
+            _nhanVienRepository = nhanVienRepository;
         }
 
         public string GenerateJwtToken(Guid userId, string username, string role, string mataikhoan)
@@ -21,10 +28,10 @@ namespace API.Services.JwtServices
             {
                 Subject = new ClaimsIdentity(new[]
                 {
-                    new Claim(ClaimTypes.NameIdentifier, userId.ToString()),
-                    new Claim(ClaimTypes.Name, username),
+                    new Claim("id_tai_khoan", userId.ToString()),
+                    new Claim("ten_dang_nhap", username),
                     new Claim(ClaimTypes.Role, role),
-                    new Claim("mataikhoan", mataikhoan)
+                    new Claim("ma_tai_khoan", mataikhoan)
                 }),
                 Expires = DateTime.UtcNow.AddHours(1),
                 SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
@@ -72,14 +79,33 @@ namespace API.Services.JwtServices
                 throw new SecurityTokenException("Invalid token");
             return principal;
         }
+        public ThongTinNguoiDung LayThonTinNguoiDung(string token)
+        {
+            if (token == null)
+                return null;
+            var jwtToken = new JwtSecurityTokenHandler().ReadToken(token) as JwtSecurityToken;
+            var userIdClaim = jwtToken?.Claims.FirstOrDefault(claim => claim.Type == "id_tai_khoan");
+            var usernameClaim = jwtToken?.Claims.FirstOrDefault(claim => claim.Type == "ten_dang_nhap");
+            var roleClaim = jwtToken?.Claims.FirstOrDefault(claim => claim.Type == "role");
+            var maTaiKhoanClaim = jwtToken?.Claims.FirstOrDefault(claim => claim.Type == "ma_tai_khoan");
 
+            var isDoiMatKhau = _taiKhoanRepository.GetByIdAsync(Guid.Parse(userIdClaim?.Value)).Result.da_doi_mat_khau;
+            return new ThongTinNguoiDung
+            {
+                id_tai_khoan = userIdClaim?.Value,
+                ma_tai_khoan = maTaiKhoanClaim?.Value,
+                chuc_vu = roleClaim?.Value,
+                da_doi_mat_khau = isDoiMatKhau,
+                ten_dang_nhap = usernameClaim?.Value
+            };
+        }
         public Guid? GetUserIdFromToken(string token)
         {
             if (token == null)
                 return null;
 
             var jwtToken = new JwtSecurityTokenHandler().ReadToken(token) as JwtSecurityToken;
-            var userIdClaim = jwtToken?.Claims.FirstOrDefault(claim => claim.Type == ClaimTypes.NameIdentifier);
+            var userIdClaim = jwtToken?.Claims.FirstOrDefault(claim => claim.Type == "id_tai_khoan");
 
             return userIdClaim != null ? Guid.Parse(userIdClaim.Value) : (Guid?)null;
         }
@@ -90,9 +116,25 @@ namespace API.Services.JwtServices
                 return null;
 
             var jwtToken = new JwtSecurityTokenHandler().ReadToken(token) as JwtSecurityToken;
-            var maTaiKhoanClaim = jwtToken?.Claims.FirstOrDefault(claim => claim.Type == "mataikhoan");
+            var maTaiKhoanClaim = jwtToken?.Claims.FirstOrDefault(claim => claim.Type == "ma_tai_khoan");
 
             return maTaiKhoanClaim?.Value;
         }
+        public Guid? GetIdNhanVienFromToken(string token)
+        {
+            if (token == null)
+                return null;
+
+            var jwtToken = new JwtSecurityTokenHandler().ReadToken(token) as JwtSecurityToken;
+            var maTaiKhoanClaim = jwtToken?.Claims.FirstOrDefault(claim => claim.Type == "ma_tai_khoan");
+
+            if (maTaiKhoanClaim == null)
+                return null;
+
+            var nhanVien = _nhanVienRepository.GetFirstOrDefaultAsync(x => x.TaiKhoanNhanVien.ma_tai_khoan == maTaiKhoanClaim.Value).Result;
+
+            return nhanVien?.id_nhan_vien;
+        }
+
     }
 }

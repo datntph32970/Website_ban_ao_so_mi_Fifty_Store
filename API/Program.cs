@@ -1,55 +1,32 @@
 using API.DbConects;
-using API.Repositories;
-using API.Services.JwtServices;
-using API.Services.SanPham_Services;
-using API.Services.TaiKhoan_Services;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
+using API.Extensions;
+using API.Filters;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
-using System.Text;
+using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-#region services
-builder.Services.AddScoped<ITaiKhoanServices, TaiKhoanServices>();
-builder.Services.AddScoped<IThuongHieuServices, ThuongHieuServices>();
-builder.Services.AddScoped(typeof(IBaseRepositories<>), typeof(BaseRepositories<>));
-builder.Services.AddScoped<IJwtServices, JwtServices>();
+builder.Services.AddCustomServices();
+builder.Services.AddCustomCors();
+builder.Services.AddCustomAuthentication(builder.Configuration);
 
-#endregion
-#region authentication
-builder.Services.AddAuthentication(opt =>
+// tránh vòng lặp vô hạn
+builder.Services.AddControllers().AddJsonOptions(options =>
 {
-    opt.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    opt.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-})
-    .AddJwtBearer( opt =>
-    {
-    opt.TokenValidationParameters = new TokenValidationParameters
-    {
-        ValidateIssuer = false,
-        ValidateAudience = false,
-        ValidateLifetime = true,
-        ValidateIssuerSigningKey = true,
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]))
-    };
-        opt.Events = new JwtBearerEvents
-        {
-            OnAuthenticationFailed = context =>
-            {
-                if (context.Exception.GetType() == typeof(SecurityTokenExpiredException))
-                {
-                    context.Response.Headers.Add("Token-Expired", "true");
-                }
-                return Task.CompletedTask;
-            }
-        };
-    });
-#endregion
-builder.Services.AddControllers();
+    options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
+    options.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
+});
+
+// Add global filter
+builder.Services.AddControllers(options =>
+{
+    options.Filters.Add<DiscountValidationFilter>();
+});
+
 builder.Services.AddEndpointsApiExplorer();
+
 #region swagger
 builder.Services.AddSwaggerGen(c =>
 {
@@ -90,6 +67,8 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(connectionString);
 });
 #endregion
+
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -99,8 +78,17 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "DATN API v1"));
 }
 
+// Add CORS middleware before other middleware
+app.UseCors("AllowAll");
+
+app.UseStaticFiles();
 app.UseHttpsRedirection();
 
+// Add custom middleware
+app.AddCustomMiddleware();
+
+// Thêm middleware xác thực trước middleware phân quyền
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
