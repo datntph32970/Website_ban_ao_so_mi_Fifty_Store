@@ -9,6 +9,7 @@ using API.DbConects.Entities.Entities_San_Pham;
 using Microsoft.EntityFrameworkCore;
 using API.DbConects.Entities.Entities_Khuyen_Mai;
 using System.Linq;
+using API.DbConects.Entities.Entities_Tai_Khoan;
 namespace API.Controllers.HoaDon_Controller
 {
     [Route("api/[controller]")]
@@ -19,13 +20,15 @@ namespace API.Controllers.HoaDon_Controller
         private readonly IHoaDonService _hoaDonService;
         private readonly IBaseService<HoaDonChiTiet> _hoaDonChiTietService;
         private readonly ISanPhamService _sanPhamService;
+        private readonly IBaseService<PhuongThucThanhToan> _phuongThucThanhToanService;
         private readonly IBaseService<SanPhamChiTiet> _sanPhamChiTietService;
         private readonly IBaseService<KhuyenMai> _khuyenMaiService;
         private readonly IBaseService<GiamGia> _giamGiaService;
+        private readonly IBaseService<NhanVien> _nhanVienService;
         private readonly IJwtServices _jwtService;
         private readonly IKhachHangService _khachHangService;
 
-        public HoaDonController(IHoaDonService hoaDonService, IJwtServices jwtService, IBaseService<HoaDonChiTiet> hoaDonChiTietService, ISanPhamService sanPhamService, IBaseService<SanPhamChiTiet> sanPhamChiTietService, IBaseService<KhuyenMai> khuyenMaiService, IBaseService<GiamGia> giamGiaService, IKhachHangService khachHangService)
+        public HoaDonController(IHoaDonService hoaDonService, IJwtServices jwtService, IBaseService<HoaDonChiTiet> hoaDonChiTietService, ISanPhamService sanPhamService, IBaseService<SanPhamChiTiet> sanPhamChiTietService, IBaseService<KhuyenMai> khuyenMaiService, IBaseService<GiamGia> giamGiaService, IKhachHangService khachHangService, IBaseService<PhuongThucThanhToan> phuongThucThanhToanService, IBaseService<NhanVien> nhanVienService)
         {
             _hoaDonService = hoaDonService;
             _jwtService = jwtService;
@@ -35,18 +38,146 @@ namespace API.Controllers.HoaDon_Controller
             _khuyenMaiService = khuyenMaiService;
             _giamGiaService = giamGiaService;
             _khachHangService = khachHangService;
+            _phuongThucThanhToanService = phuongThucThanhToanService;
+            _nhanVienService = nhanVienService;
+        }
+        //lấy thông tin chi tiết hóa đơn
+        [HttpGet("{id_hoa_don}")]
+        [Authorize(Roles = "Admin,NhanVien")]
+        public async Task<IActionResult> GetById(Guid id_hoa_don)
+        {
+            try
+            {
+                var id_nhan_vien = GetIdNhanVien();
+                if (id_nhan_vien == null)
+                    return Unauthorized();
+                var nhanVien = await _nhanVienService.GetByIdWithIncludeAsync(id_nhan_vien.Value, q => q.Include(x => x.TaiKhoanNhanVien));
+                if (nhanVien.TaiKhoanNhanVien.chuc_vu == "Admin" || nhanVien.TaiKhoanNhanVien.chuc_vu == "NhanVien")
+                {
+                    var result = await _hoaDonService.GetByIdHoaDonAdminDTOAsync(id_hoa_don);
+                    if (result == null)
+                    {
+                        return NotFound("Không tìm thấy hóa đơn");
+                    }
+                    return Ok(result);
+                }
+                else
+                {
+                    var hoadon = await _hoaDonService.GetByIdAsync(id_hoa_don);
+                    if (hoadon == null)
+                    {
+                        return NotFound("Không tìm thấy hóa đơn");
+                    }
+                    if (hoadon.id_khach_hang != id_nhan_vien.Value)
+                    {
+                        return Unauthorized();
+                    }
+                    return Ok(hoadon);
+                }
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
         }
         //lấy danh sách hóa đơn bán tại quầy có trạng thái 'ChoTaiQuay'
         [HttpGet("lay-danh-sach-hoa-don-ban-tai-quay-co-trang-thai-cho-tai-quay")]
         [Authorize(Roles = "Admin,NhanVien")]
         public async Task<IActionResult> LayDanhSachHoaDonBanTaiQuayCoTrangThaiChoTaiQuay()
         {
-            var id_nguoi_lay = GetIdNhanVien();
-            if (id_nguoi_lay == null)
-                return Unauthorized();
-            var result = await _hoaDonService.GetAllHoaDonAdminDTOAsync();
-            var hoaDonBanTaiQuay = result.Where(x => x.loai_hoa_don == "TaiQuay" && x.trang_thai == "ChoTaiQuay" && x.nguoiTao.id_nhan_vien == id_nguoi_lay).ToList();
-            return Ok(hoaDonBanTaiQuay);
+            try
+            {
+                var id_nguoi_lay = GetIdNhanVien();
+                if (id_nguoi_lay == null)
+                    return Unauthorized();
+
+                var result = await _hoaDonService.GetAllHoaDonAdminDTOAsync();
+                var hoaDonBanTaiQuay = result.Where(x => x.loai_hoa_don == "TaiQuay" &&
+                                                        x.trang_thai == "ChoTaiQuay" &&
+                                                        x.nhanVienXuLy.id_nhan_vien == id_nguoi_lay).ToList();
+
+                // Kiểm tra và xử lý hóa đơn quá hạn
+                var hoaDonQuaHan = hoaDonBanTaiQuay.Where(x => (DateTime.Now - x.ngay_tao).TotalDays >= 1).ToList();
+
+                if (hoaDonQuaHan.Any())
+                {
+                    foreach (var hoaDon in hoaDonQuaHan)
+                    {
+                        try
+                        {
+                            // Thực hiện trong transaction để đảm bảo tính nhất quán
+                            var success = await _hoaDonService.ExecuteInTransactionAsync(async () =>
+                            {
+                                // Lấy thông tin chi tiết hóa đơn với đầy đủ thông tin liên quan
+                                var hoaDonEntity = await _hoaDonService.GetByIdWithIncludeAsync(hoaDon.id_hoa_don,
+                                    q => q.Include(hd => hd.HoaDonChiTiets)
+                                         .ThenInclude(hct => hct.SanPhamChiTiet)
+                                         .Include(hd => hd.KhuyenMai));
+
+                                if (hoaDonEntity == null || hoaDonEntity.trang_thai_hoa_don != "ChoTaiQuay")
+                                    return false;
+
+                                // Hoàn trả số lượng sản phẩm
+                                foreach (var chiTiet in hoaDonEntity.HoaDonChiTiets)
+                                {
+                                    if (chiTiet.SanPhamChiTiet != null)
+                                    {
+                                        chiTiet.SanPhamChiTiet.so_luong += chiTiet.so_luong;
+                                        var updateResult = await _sanPhamChiTietService.UpdateAsync(chiTiet.SanPhamChiTiet);
+                                        if (!updateResult) return false;
+                                    }
+                                }
+
+                                // Giảm số lượng sử dụng khuyến mãi nếu có
+                                if (hoaDonEntity.id_khuyen_mai.HasValue)
+                                {
+                                    var khuyenMai = await _khuyenMaiService.GetByIdAsync(hoaDonEntity.id_khuyen_mai.Value);
+                                    if (khuyenMai != null)
+                                    {
+                                        khuyenMai.so_luong_da_su_dung = Math.Max(0, khuyenMai.so_luong_da_su_dung - 1);
+                                        var updateResult = await _khuyenMaiService.UpdateAsync(khuyenMai);
+                                        if (!updateResult) return false;
+                                    }
+                                }
+
+                                // Xóa hóa đơn và các chi tiết liên quan
+                                var deleteResult = await _hoaDonService.XoaHoaDon(hoaDon.id_hoa_don);
+                                return deleteResult.Item1;
+                            });
+
+                            if (!success)
+                            {
+                                // Log lỗi nhưng không dừng xử lý các hóa đơn khác
+                                Console.WriteLine($"Không thể xử lý hóa đơn quá hạn {hoaDon.ma_hoa_don}");
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            // Log lỗi nhưng không dừng xử lý các hóa đơn khác
+                            Console.WriteLine($"Lỗi khi xử lý hóa đơn {hoaDon.ma_hoa_don}: {ex.Message}");
+                            continue;
+                        }
+                    }
+
+                    // Lấy lại danh sách sau khi xử lý
+                    result = await _hoaDonService.GetAllHoaDonAdminDTOAsync();
+                    hoaDonBanTaiQuay = result.Where(x => x.loai_hoa_don == "TaiQuay" &&
+                                                        x.trang_thai == "ChoTaiQuay" &&
+                                                        x.nhanVienXuLy.id_nhan_vien == id_nguoi_lay).ToList();
+                }
+
+                return Ok(
+                    hoaDonBanTaiQuay
+                );
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new
+                {
+                    success = false,
+                    message = $"Đã xảy ra lỗi: {ex.Message}"
+                });
+            }
         }
         [HttpPost("them-hoa-don-ban-tai-quay-moi")]
         [Authorize(Roles = "Admin,NhanVien")]
@@ -211,12 +342,23 @@ namespace API.Controllers.HoaDon_Controller
 
                     if (hoaDon.KhuyenMai != null)
                     {
-                    var khuyenMai = await _khuyenMaiService.GetByIdAsync(hoaDon.KhuyenMai.id_khuyen_mai);
+                        var khuyenMai = await _khuyenMaiService.GetByIdAsync(hoaDon.KhuyenMai.id_khuyen_mai);
                         khuyenMai.so_luong_da_su_dung--;
                         await _khuyenMaiService.UpdateAsync(khuyenMai);
                     }
                 }
-
+                if (dto.so_tien_khach_tra != null)
+                {
+                    hoaDon.so_tien_khach_tra = dto.so_tien_khach_tra;
+                    hoaDon.so_tien_thua_tra_khach = Math.Max(0m, (decimal)(dto.so_tien_khach_tra - hoaDon.tong_tien_phai_thanh_toan));
+                }
+                if (!string.IsNullOrEmpty(dto.id_phuong_thuc_thanh_toan))
+                {
+                    var phuongThucThanhToan = await _phuongThucThanhToanService.GetByIdAsync(Guid.Parse(dto.id_phuong_thuc_thanh_toan));
+                    if (phuongThucThanhToan == null)
+                        return NotFound("Không tìm thấy phương thức thanh toán");
+                    hoaDon.id_phuong_thuc_thanh_toan = Guid.Parse(dto.id_phuong_thuc_thanh_toan);
+                }
                 // Cập nhật thông tin khác
                 hoaDon.ghi_chu = dto.ghi_chu;
 
@@ -240,7 +382,176 @@ namespace API.Controllers.HoaDon_Controller
                 return BadRequest($"Đã xảy ra lỗi: {ex.Message}");
             }
         }
+        [HttpPut("thanh-toan-hoa-don-cho-tai-quay/{id_hoa_don}")]
+        [Authorize(Roles = "Admin,NhanVien")]
+        public async Task<IActionResult> ThanhToanHoaDonChoTaiQuay(Guid id_hoa_don)
+        {
+            try
+            {
+                var id_nguoi_thanh_toan = GetIdNhanVien();
+                if (id_nguoi_thanh_toan == null)
+                    return Unauthorized();
+                var (success, message) = await _hoaDonService.ThanhToanHoaDonChoTaiQuay(id_hoa_don);
+                if (!success)
+                    return BadRequest(message);
 
+                return Ok(new { message });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest($"Đã xảy ra lỗi: {ex.Message}");
+            }
+        }
+        [HttpGet("lay-danh-sach-hoa-don")]
+        [Authorize(Roles = "Admin,NhanVien")]
+        public async Task<IActionResult> LayDanhSachHoaDon([FromQuery] ThamSoPhanTrangHoaDonAdminDTO thamSo)
+        {
+            try
+            {
+                var danhSachHoaDon = (await _hoaDonService.GetAllHoaDonAdminDTOAsync()).OrderByDescending(x => x.ngay_tao).ToList();
+
+                // Áp dụng bộ lọc
+                if (!string.IsNullOrEmpty(thamSo.tim_kiem))
+                {
+                    danhSachHoaDon = danhSachHoaDon.Where(hd =>
+                        hd.ma_hoa_don?.Contains(thamSo.tim_kiem, StringComparison.OrdinalIgnoreCase) == true ||
+                        hd.ten_khach_hang?.Contains(thamSo.tim_kiem, StringComparison.OrdinalIgnoreCase) == true ||
+                        hd.sdt_khach_hang?.Contains(thamSo.tim_kiem, StringComparison.OrdinalIgnoreCase) == true ||
+                        hd.khachHang?.ma_khach_hang?.Contains(thamSo.tim_kiem, StringComparison.OrdinalIgnoreCase) == true ||
+                        (hd.nhanVienXuLy?.ma_nhan_vien?.Contains(thamSo.tim_kiem, StringComparison.OrdinalIgnoreCase) == true) ||
+                        hd.ten_nguoi_xu_ly?.Contains(thamSo.tim_kiem, StringComparison.OrdinalIgnoreCase) == true
+
+                    ).ToList();
+                }
+
+                if (!string.IsNullOrEmpty(thamSo.trang_thai))
+                {
+                    danhSachHoaDon = danhSachHoaDon.Where(hd => hd.trang_thai == thamSo.trang_thai).ToList();
+                }
+
+                if (!string.IsNullOrEmpty(thamSo.loai_hoa_don))
+                {
+                    danhSachHoaDon = danhSachHoaDon.Where(hd => hd.loai_hoa_don == thamSo.loai_hoa_don).ToList();
+                }
+
+                if (!string.IsNullOrEmpty(thamSo.id_phuong_thuc_thanh_toan))
+                {
+                    danhSachHoaDon = danhSachHoaDon.Where(hd => hd.id_phuong_thuc_thanh_toan == thamSo.id_phuong_thuc_thanh_toan).ToList();
+                }
+
+                if (!string.IsNullOrEmpty(thamSo.ngay_tao_tu))
+                {
+                    var ngayTaoTu = DateTime.Parse(thamSo.ngay_tao_tu);
+                    danhSachHoaDon = danhSachHoaDon.Where(hd => hd.ngay_tao.Date >= ngayTaoTu.Date).ToList();
+                }
+
+                if (!string.IsNullOrEmpty(thamSo.ngay_tao_den))
+                {
+                    var ngayTaoDen = DateTime.Parse(thamSo.ngay_tao_den);
+                    danhSachHoaDon = danhSachHoaDon.Where(hd => hd.ngay_tao.Date <= ngayTaoDen.Date).ToList();
+                }
+
+                // Tính toán phân trang
+                var tongSoPhanTu = danhSachHoaDon.Count;
+                var tongSoTrang = (int)Math.Ceiling(tongSoPhanTu / (double)thamSo.so_phan_tu_tren_trang);
+                thamSo.trang_hien_tai = Math.Max(1, Math.Min(thamSo.trang_hien_tai, tongSoTrang));
+
+                // Lấy dữ liệu cho trang hiện tại
+                var danhSachPhanTrang = danhSachHoaDon
+                    .Skip((thamSo.trang_hien_tai - 1) * thamSo.so_phan_tu_tren_trang)
+                    .Take(thamSo.so_phan_tu_tren_trang)
+                    .ToList();
+
+                var ketQua = new PhanTrangHoaDonAdminDTO
+                {
+                    trang_hien_tai = thamSo.trang_hien_tai,
+                    so_phan_tu_tren_trang = thamSo.so_phan_tu_tren_trang,
+                    tong_so_trang = tongSoTrang,
+                    tong_so_phan_tu = tongSoPhanTu,
+                    danh_sach = danhSachPhanTrang
+                };
+
+                return Ok(ketQua);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest($"Đã xảy ra lỗi: {ex.Message}");
+            }
+        }
+        [HttpGet("in-hoa-don/{id_hoa_don}")]
+        [Authorize(Roles = "Admin,NhanVien")]
+        public async Task<IActionResult> InHoaDon(Guid id_hoa_don)
+        {
+            try
+            {
+                var id_nhan_vien = GetIdNhanVien();
+                if (id_nhan_vien == null)
+                    return Unauthorized();
+
+                var hoaDon = await _hoaDonService.GetByIdHoaDonAdminDTOAsync(id_hoa_don);
+                if (hoaDon == null)
+                    return NotFound("Không tìm thấy hóa đơn");
+
+                // Format the invoice content
+                var invoiceContent = new
+                {
+                    ThongTinCuaHang = new
+                    {
+                        Logo = hoaDon.cuaHang?.hinh_anh_logo_cua_hang_url,
+                        TenCuaHang = hoaDon.cuaHang?.ten_cua_hang ?? "FIFTY STORE",
+                        DiaChi = hoaDon.cuaHang?.dia_chi ?? "Địa chỉ cửa hàng",
+                        DienThoai = hoaDon.cuaHang?.sdt ?? "Số điện thoại",
+                        Website = hoaDon.cuaHang?.website ?? "Website",
+                        Email = hoaDon.cuaHang?.email ?? "Email"
+                    },
+                    ThongTinHoaDon = new
+                    {
+                        SoHoaDon = hoaDon.ma_hoa_don,
+                        NgayLap = hoaDon.ngay_tao.ToString("dd/MM/yyyy HH:mm:ss"),
+                        NhanVienBanHang = hoaDon.ten_nguoi_xu_ly,
+                        MaNhanVien = hoaDon.nhanVienXuLy?.ma_nhan_vien
+                    },
+                    ThongTinKhachHang = new
+                    {
+                        TenKhachHang = hoaDon.ten_khach_hang,
+                        MaKhachHang = hoaDon.khachHang?.ma_khach_hang ?? "Khách lẻ",
+                        SoDienThoai = hoaDon.sdt_khach_hang ?? "Không có",
+                        DiaChiGiaoHang = hoaDon.dia_chi_nhan_hang ?? "Mua tại cửa hàng"
+                    },
+                    ChiTietHoaDon = hoaDon.hoaDonChiTiets?.Select(ct => new
+                    {
+                        TenSanPham = ct.sanPhamChiTiet.ten_san_pham,
+                        MauSac = ct.sanPhamChiTiet.ten_mau_sac,
+                        KichCo = ct.sanPhamChiTiet.ten_kich_co,
+                        SoLuong = ct.so_luong,
+                        DonGia = ct.don_gia,
+                        GiaSauGiamGia = ct.gia_sau_giam_gia,
+                        ThanhTien = ct.thanh_tien
+                    }).ToList(),
+                    ThongTinThanhToan = new
+                    {
+                        TongTienHang = hoaDon.tong_tien_don_hang,
+                        GiamGia = hoaDon.so_tien_khuyen_mai ?? 0,
+                        TongThanhToan = hoaDon.tong_tien_phai_thanh_toan,
+                        PhuongThucThanhToan = hoaDon.phuong_thuc_thanh_toan ?? "Tiền mặt",
+                        TienKhachTra = hoaDon.so_tien_khach_tra ?? 0,
+                        TienThua = hoaDon.so_tien_thua_tra_khach ?? 0
+                    },
+                    GhiChu = hoaDon.ghi_chu ?? "Không có ghi chú"
+                };
+
+                return Ok(new
+                {
+                    success = true,
+                    data = invoiceContent,
+                    message = "Lấy thông tin hóa đơn thành công"
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { success = false, message = $"Lỗi: {ex.Message}" });
+            }
+        }
         private Guid? GetIdNhanVien()
         {
             var token = HttpContext.Request.Headers["Authorization"].FirstOrDefault()?.Split(" ").Last();

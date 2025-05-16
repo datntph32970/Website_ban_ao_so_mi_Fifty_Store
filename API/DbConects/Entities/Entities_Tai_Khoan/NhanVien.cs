@@ -44,8 +44,10 @@ namespace API.DbConects.Entities.Entities_Tai_Khoan
 
         public virtual TaiKhoan? TaiKhoanNhanVien { get; set; }
         public virtual TaiKhoan? NguoiTao { get; set; }
-        public virtual ICollection<HoaDon>? TaoHoaDons { get; set; }
-        public virtual ICollection<HoaDon>? SuaHoaDons { get; set; }
+        public virtual CuaHang? CuaHang { get; set; }
+        public virtual ICollection<PhuongThucThanhToan>? TaoPhuongThucThanhToans { get; set; }
+        public virtual ICollection<PhuongThucThanhToan>? SuaPhuongThucThanhToans { get; set; }
+        public virtual ICollection<HoaDon>? XulyHoaDons { get; set; }
         public virtual ICollection<HoaDonChiTiet>? SuaHoaDonChiTiets { get; set; }
         public virtual ICollection<XuatXu>? TaoXuatXus { get; set; }
         public virtual ICollection<XuatXu>? SuaXuatXus { get; set; }

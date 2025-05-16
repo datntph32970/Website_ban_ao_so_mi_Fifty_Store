@@ -58,6 +58,10 @@ namespace API.Extensions
             services.AddScoped<IJwtServices, JwtServices>();
             services.AddScoped<IEmailService, EmailService>();
             services.AddScoped<IHoaDonService, HoaDonService>();
+            services.AddScoped<ICuaHangService, CuaHangService>();
+            services.AddScoped<IThongKeService, ThongKeService>();
+            services.AddScoped<IDiaChiService, DiaChiService>();
+            services.AddScoped<IGioHangService, GioHangService>();
             services.AddScoped<ISanPhamService, SanPhamService>();
             services.AddScoped<IKhachHangService, KhachHangService>();
             services.AddScoped<IKhachHangValidationService, KhachHangValidationService>();
@@ -82,7 +86,7 @@ namespace API.Extensions
                 options.AddPolicy("AllowAll",
                     builder =>
                     {
-                        builder.WithOrigins("http://localhost:3000","https://localhost:3000") 
+                        builder.WithOrigins("http://localhost:3000", "https://localhost:3000")
                                .AllowAnyMethod()
                                .AllowAnyHeader()
                                .AllowCredentials();

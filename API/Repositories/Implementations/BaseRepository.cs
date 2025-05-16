@@ -88,12 +88,12 @@ namespace API.Repositories.Implementations
             return await _dbSet.Where(expression).ToListAsync();
         }
 
-        public virtual async Task<List<T>> GetByConditionWithIncludeAsync(Expression<Func<T, bool>> expression, params Expression<Func<T, object>>[] includes)
+        public virtual async Task<List<T>> GetByConditionWithIncludeAsync(Expression<Func<T, bool>> expression, params Func<IQueryable<T>, IIncludableQueryable<T, object>>[] includes)
         {
             IQueryable<T> query = _dbSet;
             foreach (var include in includes)
             {
-                query = query.Include(include);
+                query = include(query);
             }
             return await query.Where(expression).ToListAsync();
         }

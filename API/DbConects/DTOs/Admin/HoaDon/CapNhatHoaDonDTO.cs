@@ -10,6 +10,8 @@ namespace API.DbConects.DTOs.Admin.HoaDon
         public string? id_khach_hang { get; set; }
         public string? dia_chi_nhan_hang { get; set; }
         public string? id_khuyen_mai { get; set; }
+        public string? id_phuong_thuc_thanh_toan { get; set; }
         public string? ghi_chu { get; set; }
+        public decimal? so_tien_khach_tra { get; set; }
     }
 }

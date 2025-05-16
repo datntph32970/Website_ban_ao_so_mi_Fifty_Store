@@ -1,4 +1,5 @@
 ﻿using API.DbConects.DTOs.Admin.SanPham;
+using API.DbConects.Entities.Entities_Hoa_Don;
 using API.DbConects.Entities.Entities_San_Pham;
 using API.Services.Interfaces;
 using API.Services.JwtServices;
@@ -20,10 +21,11 @@ namespace API.Controllers.SanPham_Controller
         private readonly IBaseService<HinhAnh> _hinhAnhServices;
         private readonly IBaseService<HinhAnhSanPhamChiTiet> _hinhAnhSanPhamChiTietServices;
         private readonly IBaseService<MauSac> _mauSacServices;
+        private readonly IBaseService<HoaDonChiTiet> _hoaDonChiTietServices;
         private readonly IBaseService<KichCo> _kichCoServices;
         private readonly IJwtServices _jwtServices;
 
-        public SanPhamController(ISanPhamService sanPhamServices, IBaseService<SanPhamChiTiet> sanPhamChiTietServices, IBaseService<HinhAnh> hinhAnhServices, IBaseService<HinhAnhSanPhamChiTiet> hinhAnhSanPhamChiTietServices, IBaseService<MauSac> mauSacServices, IBaseService<KichCo> kichCoServices, IJwtServices jwtServices)
+        public SanPhamController(ISanPhamService sanPhamServices, IBaseService<SanPhamChiTiet> sanPhamChiTietServices, IBaseService<HinhAnh> hinhAnhServices, IBaseService<HinhAnhSanPhamChiTiet> hinhAnhSanPhamChiTietServices, IBaseService<MauSac> mauSacServices, IBaseService<KichCo> kichCoServices, IJwtServices jwtServices, IBaseService<HoaDonChiTiet> hoaDonChiTietServices)
         {
             _sanPhamServices = sanPhamServices;
             _sanPhamChiTietServices = sanPhamChiTietServices;
@@ -32,6 +34,7 @@ namespace API.Controllers.SanPham_Controller
             _mauSacServices = mauSacServices;
             _kichCoServices = kichCoServices;
             _jwtServices = jwtServices;
+            _hoaDonChiTietServices = hoaDonChiTietServices;
         }
 
         [HttpPost("lay-danh-sach-san-pham-admin-dto")]
@@ -42,6 +45,9 @@ namespace API.Controllers.SanPham_Controller
             {
                 // Lấy tất cả sản phẩm với các thuộc tính liên quan
                 var allSanPhams = await _sanPhamServices.GetAllSanPhamAdminDTOAsync();
+
+                // Sắp xếp theo ngày tạo giảm dần
+                allSanPhams = allSanPhams.OrderByDescending(sp => sp.ngay_tao).ToList();
 
                 // Tính giá lớn nhất từ tất cả sản phẩm chi tiết
                 var giaLonNhat = allSanPhams
@@ -744,6 +750,13 @@ namespace API.Controllers.SanPham_Controller
         [Authorize(Roles = "Admin,NhanVien")]
         public async Task<IActionResult> Delete(Guid id)
         {
+            var sp = await _sanPhamServices.GetByIdWithIncludeAsync(id, q => q.Include(sp => sp.SanPhamChiTiets).ThenInclude(spct => spct.HoaDonChiTiets));
+            if (sp == null)
+                return NotFound("Sản phẩm không tồn tại");
+
+            if (sp.SanPhamChiTiets.Any(spct => spct.HoaDonChiTiets.Any()))
+                return BadRequest("Sản phẩm đã có hóa đơn không thể xóa");
+
             var result = await _sanPhamServices.ExecuteInTransactionAsync(async () =>
             {
                 var sanPham = await _sanPhamServices.GetByIdAsync(id);
@@ -829,7 +842,7 @@ namespace API.Controllers.SanPham_Controller
             return File(imageBytes, "image/jpeg");
         }
         [HttpPut("update-trang-thai-san-pham/{id}")]
-        [Authorize(Roles = "NhanVien")]
+        [Authorize(Roles = "NhanVien,Admin")]
         public async Task<IActionResult> UpdateTrangThai(Guid id, [FromBody] CapNhatTrangThaiSanPhamDTO dto)
         {
             try
@@ -840,24 +853,47 @@ namespace API.Controllers.SanPham_Controller
                 if (dto.trang_thai != "HoatDong" && dto.trang_thai != "KhongHoatDong")
                     return BadRequest("Trạng thái không hợp lệ");
 
+                // Lấy sản phẩm với chi tiết và hóa đơn
+                var existingSanPham = await _sanPhamServices.GetByIdWithIncludeAsync(id,
+                    q => q.Include(sp => sp.SanPhamChiTiets)
+                          .ThenInclude(spct => spct.HoaDonChiTiets)
+                          .ThenInclude(hdct => hdct.HoaDon));
+
+                if (existingSanPham == null)
+                    return NotFound("Không tìm thấy sản phẩm");
+
+                // Nếu đang chuyển sang trạng thái không hoạt động
+                if (dto.trang_thai == "KhongHoatDong")
+                {
+                    // Kiểm tra xem có sản phẩm chi tiết nào đang trong hóa đơn chưa hoàn thành không
+                    var hasActiveInvoices = existingSanPham.SanPhamChiTiets
+                        .Any(spct => spct.HoaDonChiTiets
+                            .Any(hdct => hdct.HoaDon != null &&
+                                (hdct.HoaDon.trang_thai_hoa_don == "ChoTaiQuay" ||
+                                 hdct.HoaDon.trang_thai_hoa_don == "DangGiao" ||
+                                 hdct.HoaDon.trang_thai_hoa_don == "DangXuLy")));
+
+                    if (hasActiveInvoices)
+                        return BadRequest("Không thể vô hiệu hóa sản phẩm đang có trong hóa đơn chưa hoàn thành");
+                }
+
                 var result = await _sanPhamServices.ExecuteInTransactionAsync(async () =>
                 {
-                    // Lấy sản phẩm hiện tại với chi tiết
-                    var existingSanPham = await _sanPhamServices.GetByIdWithIncludeAsync(id,
-                        q => q.Include(sp => sp.SanPhamChiTiets));
-
-                    if (existingSanPham == null)
-                        return false;
-
                     // Cập nhật trạng thái sản phẩm
                     existingSanPham.trang_thai = dto.trang_thai;
+                    existingSanPham.ngay_sua = DateTime.Now;
+                    existingSanPham.id_nguoi_sua = (Guid)GetIdNhanVien();
                     await _sanPhamServices.UpdateAsync(existingSanPham);
 
                     // Cập nhật trạng thái tất cả sản phẩm chi tiết
                     foreach (var spct in existingSanPham.SanPhamChiTiets)
                     {
                         spct.trang_thai = dto.trang_thai;
-                        await _sanPhamChiTietServices.UpdateAsync(spct);
+                        spct.ngay_sua = DateTime.Now;
+                        spct.id_nguoi_sua = (Guid)GetIdNhanVien();
+                        var updateResult = await _sanPhamChiTietServices.UpdateAsync(spct);
+                        if (!updateResult)
+                            return false;
                     }
 
                     return true;
@@ -879,16 +915,26 @@ namespace API.Controllers.SanPham_Controller
         {
             try
             {
+                // Kiểm tra sản phẩm chi tiết có hóa đơn không
+                var sanPhamChiTiets = await _sanPhamChiTietServices.GetByConditionAsync(x =>
+                    x.id_san_pham == idSanPham &&
+                    x.id_mau_sac == idMauSac);
+
+                if (!sanPhamChiTiets.Any())
+                    return NotFound("Không tìm thấy sản phẩm chi tiết");
+
+                // Kiểm tra hóa đơn
+                foreach (var spct in sanPhamChiTiets)
+                {
+                    var hoaDonChiTiets = await _hoaDonChiTietServices.GetByConditionAsync(x =>
+                        x.id_san_pham_chi_tiet == spct.id_san_pham_chi_tiet);
+
+                    if (hoaDonChiTiets.Any())
+                        return BadRequest("Sản phẩm chi tiết đã có trong hóa đơn, không thể xóa");
+                }
+
                 var result = await _sanPhamServices.ExecuteInTransactionAsync(async () =>
                 {
-                    // Lấy sản phẩm chi tiết theo màu sắc
-                    var sanPhamChiTiets = await _sanPhamChiTietServices.GetByConditionAsync(x =>
-                        x.id_san_pham == idSanPham &&
-                        x.id_mau_sac == idMauSac);
-
-                    if (!sanPhamChiTiets.Any())
-                        return false;
-
                     foreach (var spct in sanPhamChiTiets)
                     {
                         // Xóa hình ảnh liên quan
@@ -927,20 +973,28 @@ namespace API.Controllers.SanPham_Controller
         {
             try
             {
+                // Kiểm tra sản phẩm chi tiết có hóa đơn không
+                var sanPhamChiTiet = await _sanPhamChiTietServices.GetByConditionAsync(x =>
+                    x.id_san_pham == idSanPham &&
+                    x.id_mau_sac == idMauSac &&
+                    x.id_kich_co == idKichCo);
+
+                var spct = sanPhamChiTiet.FirstOrDefault();
+                if (spct == null)
+                    return NotFound("Không tìm thấy sản phẩm chi tiết");
+
+                // Kiểm tra hóa đơn
+                var hoaDonChiTiets = await _hoaDonChiTietServices.GetByConditionAsync(x =>
+                    x.id_san_pham_chi_tiet == spct.id_san_pham_chi_tiet);
+
+                if (hoaDonChiTiets.Any())
+                    return BadRequest("Sản phẩm chi tiết đã có trong hóa đơn, không thể xóa");
+
                 var result = await _sanPhamServices.ExecuteInTransactionAsync(async () =>
                 {
-                    // Lấy sản phẩm chi tiết theo màu sắc và kích cỡ
-                    var sanPhamChiTiet = (await _sanPhamChiTietServices.GetByConditionAsync(x =>
-                        x.id_san_pham == idSanPham &&
-                        x.id_mau_sac == idMauSac &&
-                        x.id_kich_co == idKichCo)).FirstOrDefault();
-
-                    if (sanPhamChiTiet == null)
-                        return false;
-
                     // Xóa hình ảnh liên quan
                     var hinhAnhs = await _hinhAnhSanPhamChiTietServices.GetByConditionAsync(x =>
-                        x.id_san_pham_chi_tiet == sanPhamChiTiet.id_san_pham_chi_tiet);
+                        x.id_san_pham_chi_tiet == spct.id_san_pham_chi_tiet);
 
                     foreach (var hinhAnh in hinhAnhs)
                     {
@@ -949,11 +1003,7 @@ namespace API.Controllers.SanPham_Controller
                     }
 
                     // Xóa sản phẩm chi tiết
-                    var deleteSPCT = await _sanPhamChiTietServices.DeleteAsync(sanPhamChiTiet.id_san_pham_chi_tiet);
-                    if (!deleteSPCT)
-                        return false;
-
-                    return true;
+                    return await _sanPhamChiTietServices.DeleteAsync(spct.id_san_pham_chi_tiet);
                 });
 
                 if (!result)
@@ -974,7 +1024,8 @@ namespace API.Controllers.SanPham_Controller
             {
                 // Lấy tất cả sản phẩm với các thuộc tính liên quan
                 var allSanPhams = await _sanPhamServices.GetAllSanPhamAdminDTOAsync();
-
+                // Sắp xếp theo ngày tạo giảm dần
+                allSanPhams = allSanPhams.OrderByDescending(sp => sp.ngay_tao).ToList();
                 // Lọc sản phẩm có trạng thái HoatDong và có ít nhất một sản phẩm chi tiết HoatDong
                 allSanPhams = allSanPhams.Where(sp =>
                     sp.trang_thai == "HoatDong" &&
@@ -1145,6 +1196,92 @@ namespace API.Controllers.SanPham_Controller
                 }
 
                 return Ok(sanPham);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest($"Đã có lỗi xảy ra: {ex.Message}");
+            }
+        }
+
+        [HttpPut("update-trang-thai-san-pham-chi-tiet/{id}")]
+        [Authorize(Roles = "NhanVien,Admin")]
+        public async Task<IActionResult> UpdateTrangThaiSanPhamChiTiet(Guid id, [FromBody] CapNhatTrangThaiSanPhamDTO dto)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(dto.trang_thai))
+                    return BadRequest("Trạng thái không được để trống");
+
+                if (dto.trang_thai != "HoatDong" && dto.trang_thai != "KhongHoatDong")
+                    return BadRequest("Trạng thái không hợp lệ");
+
+                // Kiểm tra sản phẩm chi tiết có hóa đơn không
+                var existingSanPhamChiTiet = await _sanPhamChiTietServices.GetByIdWithIncludeAsync(id,
+                    q => q.Include(spct => spct.HoaDonChiTiets).ThenInclude(hdct => hdct.HoaDon));
+
+                if (existingSanPhamChiTiet == null)
+                    return NotFound("Không tìm thấy sản phẩm chi tiết");
+
+                // Nếu có hóa đơn và đang cố gắng chuyển sang trạng thái không hoạt động
+                if (existingSanPhamChiTiet.HoaDonChiTiets.Any() && dto.trang_thai == "KhongHoatDong")
+                {
+                    // Kiểm tra xem có hóa đơn nào đang trong quá trình xử lý không
+                    var activeInvoices = existingSanPhamChiTiet.HoaDonChiTiets
+                        .Any(hdct => hdct.HoaDon != null &&
+                            (hdct.HoaDon.trang_thai_hoa_don == "ChoTaiQuay" ||
+                             hdct.HoaDon.trang_thai_hoa_don == "DangGiao" ||
+                             hdct.HoaDon.trang_thai_hoa_don == "DangXuLy"));
+
+                    if (activeInvoices)
+                        return BadRequest("Không thể vô hiệu hóa sản phẩm chi tiết đang có trong hóa đơn chưa hoàn thành");
+                }
+
+                var result = await _sanPhamServices.ExecuteInTransactionAsync(async () =>
+                {
+                    // Cập nhật trạng thái sản phẩm chi tiết
+                    existingSanPhamChiTiet.trang_thai = dto.trang_thai;
+                    existingSanPhamChiTiet.ngay_sua = DateTime.Now;
+                    existingSanPhamChiTiet.id_nguoi_sua = (Guid)GetIdNhanVien();
+
+                    var updateResult = await _sanPhamChiTietServices.UpdateAsync(existingSanPhamChiTiet);
+                    if (!updateResult)
+                        return false;
+
+                    // Kiểm tra và cập nhật trạng thái sản phẩm chính
+                    if (dto.trang_thai == "KhongHoatDong")
+                    {
+                        var allSanPhamChiTiet = await _sanPhamChiTietServices.GetByConditionAsync(x =>
+                            x.id_san_pham == existingSanPhamChiTiet.id_san_pham);
+
+                        if (allSanPhamChiTiet.All(x => x.trang_thai == "KhongHoatDong"))
+                        {
+                            var sanPham = await _sanPhamServices.GetByIdAsync(existingSanPhamChiTiet.id_san_pham);
+                            if (sanPham != null)
+                            {
+                                sanPham.trang_thai = "KhongHoatDong";
+                                sanPham.ngay_sua = DateTime.Now;
+                                await _sanPhamServices.UpdateAsync(sanPham);
+                            }
+                        }
+                    }
+                    else if (dto.trang_thai == "HoatDong")
+                    {
+                        var sanPham = await _sanPhamServices.GetByIdAsync(existingSanPhamChiTiet.id_san_pham);
+                        if (sanPham != null && sanPham.trang_thai == "KhongHoatDong")
+                        {
+                            sanPham.trang_thai = "HoatDong";
+                            sanPham.ngay_sua = DateTime.Now;
+                            await _sanPhamServices.UpdateAsync(sanPham);
+                        }
+                    }
+
+                    return true;
+                });
+
+                if (!result)
+                    return BadRequest("Đã có lỗi xảy ra khi cập nhật trạng thái sản phẩm chi tiết");
+
+                return Ok("Cập nhật trạng thái sản phẩm chi tiết thành công");
             }
             catch (Exception ex)
             {

@@ -30,6 +30,14 @@ namespace API.Controllers.SanPham_Controller
             return Ok(result);
         }
 
+        [HttpGet("active")]
+        public async Task<IActionResult> GetActiveBrands()
+        {
+            var allBrands = await _thuongHieuService.GetAllWithIncludeAsync(cl => cl.Include(c => c.SanPhams));
+            var activeBrands = allBrands.Where(b => b.trang_thai == "HoatDong").ToList();
+            return Ok(activeBrands);
+        }
+
         [HttpPost]
         [Authorize(Roles = "Admin,NhanVien")]
         public async Task<IActionResult> ThemThuongHieu(ThemThuongHieuAdminDTO thuongHieuDTO)

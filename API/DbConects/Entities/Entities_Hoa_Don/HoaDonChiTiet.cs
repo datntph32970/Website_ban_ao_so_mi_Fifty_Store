@@ -33,10 +33,10 @@ namespace API.DbConects.Entities.Entities_Hoa_Don
         [Required(ErrorMessage = "Trạng thái không được để trống")]
         [RegularExpression("^(ChoTaiQuay|DangChoXuLy|DangXuLy|DangGiaoHang|HetHang|DaThanhToan|ChuaThanhToan|DaHoanThanh|DaHuy|DaHoanTraMotPhan|DaHoanTraToanBo)$", ErrorMessage = "Trạng thái hóa đơn không hợp lệ")]
         public string trang_thai { get; set; }
-        [ForeignKey("NhanVien")]
-        public Guid? id_nguoi_sua { get; set; }
-        public DateTime? ngaySua { get; set; }
-        public virtual NhanVien? nguoiSua { get; set; }
+        [ForeignKey("NhanVienXuLy")]
+        public Guid? id_nhan_vien_xu_ly { get; set; }
+        public DateTime? ngay_sua { get; set; }
+        public virtual NhanVien? NhanVienXuLy { get; set; }
         public virtual HoaDon? HoaDon { get; set; }
         public virtual SanPhamChiTiet? SanPhamChiTiet { get; set; }
     }

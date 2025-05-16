@@ -1,4 +1,5 @@
-﻿using API.DbConects.Entities.Entities_Tai_Khoan;
+﻿using API.DbConects.Entities.Entities_Hoa_Don;
+using API.DbConects.Entities.Entities_Tai_Khoan;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -24,5 +25,6 @@ namespace API.DbConects.Entities.Entities_San_Pham
         [ForeignKey("id_nguoi_sua")]
         public virtual NhanVien? NguoiSua { get; set; }
         public virtual SanPham? SanPham { get; set; }
+        public virtual CuaHang? CuaHang { get; set; }
     }
 }

@@ -15,5 +15,6 @@ namespace API.Services.Interfaces
         Task<(decimal tongTienSauKhuyenMai, decimal giaTriKhuyenMai)> CapNhatTongTienVaGiaTriKhuyenMai(Guid id_hoa_don);
         Task<HoaDonAdminDTO> GetHoaDonBanTaiQuayByIdAsync(Guid id_hoa_don, Guid id_nguoi_tao);
         Task<(bool success, string message)> ThemHoaDonChiTiet(Guid id_hoa_don, Guid id_san_pham_chi_tiet, int so_luong, string ghi_chu);
+        Task<(bool success, string message)> ThanhToanHoaDonChoTaiQuay(Guid id_hoa_don);
     }
 }

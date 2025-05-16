@@ -36,7 +36,7 @@ namespace API.Services.Validation
                 result.Errors.Add("Tên khách hàng không được vượt quá 100 ký tự");
 
             // Validate ngày sinh
-            if (entity.ngay_sinh > DateTime.Now)
+            if (entity.ngay_sinh > DateOnly.FromDateTime(DateTime.Now))
                 result.Errors.Add("Ngày sinh không thể lớn hơn ngày hiện tại");
 
             // Validate số điện thoại

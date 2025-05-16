@@ -8,13 +8,13 @@ namespace API.DbConects.Entities.Entities_Tai_Khoan
     {
         [Key]
         public Guid id_khach_hang { get; set; }
-        [ForeignKey("KhachHang")]
+        [ForeignKey("TaiKhoan")]
         public Guid? id_tai_khoan { get; set; }
         [Required(ErrorMessage = "Mã khách hàng không được để trống")]
         public string ma_khach_hang { get; set; }
         [StringLength(100, ErrorMessage = "Tên khách hàng không được vượt quá 100 ký tự")]
         public string? ten_khach_hang { get; set; }
-        public DateTime? ngay_sinh { get; set; }
+        public DateOnly? ngay_sinh { get; set; }
         [Phone(ErrorMessage = "Số điện thoại không hợp lệ")]
         public string? so_dien_thoai { get; set; }
         [EmailAddress(ErrorMessage = "Email không hợp lệ")]

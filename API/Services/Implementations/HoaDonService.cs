@@ -21,8 +21,9 @@ namespace API.Services.Implementations
         private readonly IBaseRepository<NhanVien> _nhanVienRepository;
         private readonly IBaseRepository<KhuyenMai> _khuyenMaiRepository;
         private readonly IBaseRepository<GiamGia> _giamGiaRepository;
+        private readonly IBaseRepository<CuaHang> _cuaHangRepository;
 
-        public HoaDonService(IBaseRepository<HoaDon> hoaDonRepository, IBaseRepository<HoaDonChiTiet> hoaDonChiTietRepository, IBaseRepository<SanPhamChiTiet> sanPhamChiTietRepository, IBaseRepository<SanPham> sanPhamRepository, IBaseRepository<KhachHang> khachHangRepository, IBaseRepository<NhanVien> nhanVienRepository, IBaseRepository<KhuyenMai> khuyenMaiRepository, IBaseRepository<GiamGia> giamGiaRepository) : base(hoaDonRepository)
+        public HoaDonService(IBaseRepository<HoaDon> hoaDonRepository, IBaseRepository<HoaDonChiTiet> hoaDonChiTietRepository, IBaseRepository<SanPhamChiTiet> sanPhamChiTietRepository, IBaseRepository<SanPham> sanPhamRepository, IBaseRepository<KhachHang> khachHangRepository, IBaseRepository<NhanVien> nhanVienRepository, IBaseRepository<KhuyenMai> khuyenMaiRepository, IBaseRepository<GiamGia> giamGiaRepository, IBaseRepository<CuaHang> cuaHangRepository) : base(hoaDonRepository)
         {
             _hoaDonRepository = hoaDonRepository;
             _hoaDonChiTietRepository = hoaDonChiTietRepository;
@@ -32,13 +33,13 @@ namespace API.Services.Implementations
             _nhanVienRepository = nhanVienRepository;
             _khuyenMaiRepository = khuyenMaiRepository;
             _giamGiaRepository = giamGiaRepository;
+            _cuaHangRepository = cuaHangRepository;
         }
 
         public async Task<List<HoaDonAdminDTO>> GetAllHoaDonAdminDTOAsync()
         {
             var result = await _hoaDonRepository.GetAllWithIncludeAsync(q => q.Include(hd => hd.KhachHang)
-                                                                       .Include(hd => hd.NguoiTao)
-                                                                       .Include(hd => hd.NguoiSua)
+                                                                       .Include(hd => hd.NhanVienXuLy)
                                                                        .Include(hd => hd.PhuongThucThanhToan)
                                                                        .Include(hd => hd.HoaDonChiTiets)
                                                                        .ThenInclude(hct => hct.SanPhamChiTiet)
@@ -55,31 +56,27 @@ namespace API.Services.Implementations
                 ma_hoa_don = hd.ma_hoa_don,
                 id_khach_hang = hd.id_khach_hang != null ? hd.id_khach_hang : null,
                 ten_khach_hang = hd.id_khach_hang != null ? hd.KhachHang.ten_khach_hang : "Khách lẻ",
-                ten_nhan_vien = hd.NguoiTao.ten_nhan_vien,
+                ten_nguoi_xu_ly = hd.NhanVienXuLy.ten_nhan_vien,
                 sdt_khach_hang = hd.id_khach_hang != null ? hd.KhachHang.so_dien_thoai : null,
                 dia_chi_nhan_hang = hd.id_khach_hang != null ? hd.dia_chi_nhan_hang : null,
                 ghi_chu = hd.ghi_chu,
                 loai_hoa_don = hd.loai_hoa_don,
+                so_tien_khach_tra = hd.so_tien_khach_tra,
+                phi_van_chuyen = hd.phi_van_chuyen ?? 0,
+                id_phuong_thuc_thanh_toan = hd.id_phuong_thuc_thanh_toan?.ToString(),
+                so_tien_thua_tra_khach = hd.so_tien_thua_tra_khach,
                 tong_tien_don_hang = hd.tong_tien_don_hang ?? 0,
                 so_tien_khuyen_mai = hd.id_khuyen_mai != null ? hd.so_tien_khuyen_mai : null,
                 tong_tien_phai_thanh_toan = hd.tong_tien_phai_thanh_toan ?? 0,
                 trang_thai = hd.trang_thai_hoa_don,
                 phuong_thuc_thanh_toan = hd.PhuongThucThanhToan?.ten_phuong_thuc_thanh_toan,
                 ngay_tao = hd.ngay_tao,
-                ten_nguoi_tao = hd.NguoiTao.ten_nhan_vien,
-                ngay_sua = hd.ngay_sua,
-                ten_nguoi_sua = hd.NguoiSua?.ten_nhan_vien,
-                nguoiTao = new NhanVien_HoaDonAdminDTO
+
+                nhanVienXuLy = hd.NhanVienXuLy != null ? new NhanVien_HoaDonAdminDTO
                 {
-                    id_nhan_vien = hd.id_nguoi_tao,
-                    ma_nhan_vien = hd.NguoiTao.ma_nhan_vien,
-                    ten_nhan_vien = hd.NguoiTao.ten_nhan_vien
-                },
-                nguoiSua = hd.NguoiSua != null ? new NhanVien_HoaDonAdminDTO
-                {
-                    id_nhan_vien = hd.id_nguoi_sua,
-                    ma_nhan_vien = hd.NguoiSua?.ma_nhan_vien,
-                    ten_nhan_vien = hd.NguoiSua?.ten_nhan_vien
+                    id_nhan_vien = hd.id_nhan_vien_xu_ly,
+                    ma_nhan_vien = hd.NhanVienXuLy.ma_nhan_vien,
+                    ten_nhan_vien = hd.NhanVienXuLy.ten_nhan_vien
                 } : null,
                 khachHang = hd.KhachHang != null ? new KhachHang_HoaDonAdminDTO
                 {
@@ -95,8 +92,9 @@ namespace API.Services.Implementations
         public async Task<HoaDonAdminDTO> GetByIdHoaDonAdminDTOAsync(Guid id)
         {
             var result = await _hoaDonRepository.GetByIdWithIncludeAsync(id, q => q.Include(hd => hd.KhachHang)
-                                                                       .Include(hd => hd.NguoiTao)
-                                                                       .Include(hd => hd.NguoiSua)
+                                                                       .Include(hd => hd.NhanVienXuLy)
+                                                                       .Include(hd => hd.CuaHang)
+                                                                       .ThenInclude(ch => ch.HinhAnh)
                                                                        .Include(hd => hd.PhuongThucThanhToan)
                                                                        .Include(hd => hd.HoaDonChiTiets)
                                                                        .ThenInclude(hct => hct.SanPhamChiTiet)
@@ -107,37 +105,44 @@ namespace API.Services.Implementations
                                                                        .Include(hd => hd.HoaDonChiTiets)
                                                                        .ThenInclude(hct => hct.SanPhamChiTiet)
                                                                        .ThenInclude(spct => spct.KichCo));
+
             return new HoaDonAdminDTO
             {
                 id_hoa_don = result.id_hoa_don,
                 ma_hoa_don = result.ma_hoa_don,
                 id_khach_hang = result.id_khach_hang != null ? result.id_khach_hang : null,
                 ten_khach_hang = result.id_khach_hang != null ? result.KhachHang.ten_khach_hang : "Khách lẻ",
-                ten_nhan_vien = result.NguoiTao.ten_nhan_vien,
+                ten_nguoi_xu_ly = result.NhanVienXuLy.ten_nhan_vien,
                 sdt_khach_hang = result.id_khach_hang != null ? result.KhachHang.so_dien_thoai : null,
                 dia_chi_nhan_hang = result.id_khach_hang != null ? result.dia_chi_nhan_hang : null,
                 ghi_chu = result.ghi_chu,
                 loai_hoa_don = result.loai_hoa_don,
+                so_tien_khach_tra = result.so_tien_khach_tra,
+                phi_van_chuyen = result.phi_van_chuyen,
+                so_tien_thua_tra_khach = result.so_tien_thua_tra_khach,
+                id_phuong_thuc_thanh_toan = result.id_phuong_thuc_thanh_toan?.ToString(),
                 tong_tien_don_hang = result.tong_tien_don_hang ?? 0,
                 so_tien_khuyen_mai = result.id_khuyen_mai != null ? result.so_tien_khuyen_mai : null,
                 tong_tien_phai_thanh_toan = result.tong_tien_phai_thanh_toan ?? 0,
                 trang_thai = result.trang_thai_hoa_don,
                 phuong_thuc_thanh_toan = result.PhuongThucThanhToan?.ten_phuong_thuc_thanh_toan,
                 ngay_tao = result.ngay_tao,
-                ten_nguoi_tao = result.NguoiTao.ten_nhan_vien,
-                ngay_sua = result.ngay_sua,
-                ten_nguoi_sua = result.NguoiSua?.ten_nhan_vien,
-                nguoiTao = new NhanVien_HoaDonAdminDTO
+                cuaHang = result.CuaHang == null ? null : new CuaHang_HoaDonAdminDTO
                 {
-                    id_nhan_vien = result.NguoiTao.id_nhan_vien,
-                    ma_nhan_vien = result.NguoiTao.ma_nhan_vien,
-                    ten_nhan_vien = result.NguoiTao.ten_nhan_vien
+                    id_cua_hang = result.CuaHang.id_cua_hang,
+                    ten_cua_hang = result.CuaHang.ten_cua_hang,
+                    website = result.CuaHang.website,
+                    email = result.CuaHang.email,
+                    sdt = result.CuaHang.sdt,
+                    dia_chi = result.CuaHang.dia_chi,
+                    mo_ta = result.CuaHang.mo_ta,
+                    hinh_anh_logo_cua_hang_url = result.CuaHang.HinhAnh?.url
                 },
-                nguoiSua = result.NguoiSua == null ? null : new NhanVien_HoaDonAdminDTO
+                nhanVienXuLy = new NhanVien_HoaDonAdminDTO
                 {
-                    id_nhan_vien = result.id_nguoi_sua,
-                    ma_nhan_vien = result.NguoiSua.ma_nhan_vien,
-                    ten_nhan_vien = result.NguoiSua.ten_nhan_vien
+                    id_nhan_vien = result.NhanVienXuLy.id_nhan_vien,
+                    ma_nhan_vien = result.NhanVienXuLy.ma_nhan_vien,
+                    ten_nhan_vien = result.NhanVienXuLy.ten_nhan_vien
                 },
                 khachHang = result.KhachHang == null ? null : new KhachHang_HoaDonAdminDTO
                 {
@@ -154,11 +159,11 @@ namespace API.Services.Implementations
             var result = await GetAllHoaDonAdminDTOAsync();
             return result.Where(hd => hd.hoaDonChiTiets.Any(hct => hct.id_san_pham_chi_tiet == sanPhamChiTietId)).ToList();
         }
-        public async Task<(bool, string)> ThemHoaDonBanTaiQuayMoiAsync(Guid id_nguoi_tao)
+        public async Task<(bool, string)> ThemHoaDonBanTaiQuayMoiAsync(Guid id_nhan_vien_xu_ly)
         {
             try
             {
-                var result = await _nhanVienRepository.GetByIdAsync(id_nguoi_tao);
+                var result = await _nhanVienRepository.GetByIdAsync(id_nhan_vien_xu_ly);
                 if (result == null)
                 {
                     return (false, "Không tìm thấy nhân viên");
@@ -174,7 +179,7 @@ namespace API.Services.Implementations
                 }
                 var hoaDon = new HoaDon
                 {
-                    id_nguoi_tao = id_nguoi_tao,
+                    id_nhan_vien_xu_ly = id_nhan_vien_xu_ly,
                     ma_hoa_don = await TaoMaHoaDon(),
                     ngay_tao = DateTime.Now,
                     loai_hoa_don = "TaiQuay",
@@ -517,13 +522,12 @@ namespace API.Services.Implementations
             var randomPart = new Random().Next(1000, 9999).ToString();
             return $"HDCT-{timestamp}-{randomPart}";
         }
-        public async Task<HoaDonAdminDTO> GetHoaDonBanTaiQuayByIdAsync(Guid id_hoa_don, Guid id_nguoi_tao)
+        public async Task<HoaDonAdminDTO> GetHoaDonBanTaiQuayByIdAsync(Guid id_hoa_don, Guid id_nhan_vien_xu_ly)
         {
             await CapNhatTongTienVaGiaTriKhuyenMai(id_hoa_don);
             var result = await _hoaDonRepository.GetByIdWithIncludeAsync(id_hoa_don, q => q
                 .Include(hd => hd.KhachHang)
-                .Include(hd => hd.NguoiTao)
-                .Include(hd => hd.NguoiSua)
+                .Include(hd => hd.NhanVienXuLy)
                 .Include(hd => hd.KhuyenMai)
                 .Include(hd => hd.PhuongThucThanhToan)
                 .Include(hd => hd.HoaDonChiTiets)
@@ -539,7 +543,7 @@ namespace API.Services.Implementations
             if (result == null ||
                 result.loai_hoa_don != "TaiQuay" ||
                 result.trang_thai_hoa_don != "ChoTaiQuay" ||
-                result.id_nguoi_tao != id_nguoi_tao)
+                result.id_nhan_vien_xu_ly != id_nhan_vien_xu_ly)
             {
                 return null;
             }
@@ -550,32 +554,27 @@ namespace API.Services.Implementations
                 ma_hoa_don = result.ma_hoa_don,
                 id_khach_hang = result.id_khach_hang,
                 ten_khach_hang = result.KhachHang?.ten_khach_hang ?? "Khách lẻ",
-                ten_nhan_vien = result.NguoiTao.ten_nhan_vien,
+                ten_nguoi_xu_ly = result.NhanVienXuLy.ten_nhan_vien,
                 sdt_khach_hang = result.KhachHang?.so_dien_thoai,
                 dia_chi_nhan_hang = result.dia_chi_nhan_hang,
                 ghi_chu = result.ghi_chu,
                 loai_hoa_don = result.loai_hoa_don,
+                so_tien_khach_tra = result.so_tien_khach_tra,
+                id_phuong_thuc_thanh_toan = result.id_phuong_thuc_thanh_toan?.ToString(),
+                so_tien_thua_tra_khach = result.so_tien_thua_tra_khach,
                 tong_tien_don_hang = result.tong_tien_don_hang ?? 0,
                 so_tien_khuyen_mai = result.so_tien_khuyen_mai,
                 tong_tien_phai_thanh_toan = result.tong_tien_phai_thanh_toan ?? 0,
                 trang_thai = result.trang_thai_hoa_don,
                 phuong_thuc_thanh_toan = result.PhuongThucThanhToan?.ten_phuong_thuc_thanh_toan,
                 ngay_tao = result.ngay_tao,
-                ten_nguoi_tao = result.NguoiTao.ten_nhan_vien,
-                ngay_sua = result.ngay_sua,
-                ten_nguoi_sua = result.NguoiSua?.ten_nhan_vien,
-                nguoiTao = new NhanVien_HoaDonAdminDTO
+
+                nhanVienXuLy = new NhanVien_HoaDonAdminDTO
                 {
-                    id_nhan_vien = result.NguoiTao.id_nhan_vien,
-                    ma_nhan_vien = result.NguoiTao.ma_nhan_vien,
-                    ten_nhan_vien = result.NguoiTao.ten_nhan_vien
+                    id_nhan_vien = result.NhanVienXuLy.id_nhan_vien,
+                    ma_nhan_vien = result.NhanVienXuLy.ma_nhan_vien,
+                    ten_nhan_vien = result.NhanVienXuLy.ten_nhan_vien
                 },
-                nguoiSua = result.NguoiSua != null ? new NhanVien_HoaDonAdminDTO
-                {
-                    id_nhan_vien = result.NguoiSua.id_nhan_vien,
-                    ma_nhan_vien = result.NguoiSua.ma_nhan_vien,
-                    ten_nhan_vien = result.NguoiSua.ten_nhan_vien
-                } : null,
                 khachHang = result.KhachHang != null ? new KhachHang_HoaDonAdminDTO
                 {
                     id_khach_hang = result.KhachHang.id_khach_hang,
@@ -646,36 +645,101 @@ namespace API.Services.Implementations
         }
         private async Task<List<HoaDonChiTietAdminDTO>> MapHoaDonChiTietsAsync(IEnumerable<HoaDonChiTiet> chiTiets)
         {
+            if (chiTiets == null || !chiTiets.Any())
+            {
+                return new List<HoaDonChiTietAdminDTO>();
+            }
+
+            // Lấy hóa đơn từ hóa đơn chi tiết đầu tiên (vì tất cả chi tiết đều thuộc cùng một hóa đơn)
+            var firstChiTiet = chiTiets.First();
+            var hoaDon = await _hoaDonRepository.GetByIdAsync(firstChiTiet.id_hoa_don);
+            if (hoaDon == null)
+            {
+                return new List<HoaDonChiTietAdminDTO>();
+            }
+
+            var isChoTaiQuay = hoaDon.trang_thai_hoa_don == "ChoTaiQuay";
             var result = new List<HoaDonChiTietAdminDTO>();
+
             foreach (var hct in chiTiets)
             {
-                var giaSauGiamGia = await TinhTongTienSauGiamGiaSanPham(hct.id_san_pham_chi_tiet);
-                result.Add(new HoaDonChiTietAdminDTO
+                try
                 {
-                    id_hoa_don_chi_tiet = hct.id_hoa_don_chi_tiet,
-                    ma_hoa_don_chi_tiet = hct.ma_hoa_don_chi_tiet,
-                    id_hoa_don = hct.id_hoa_don,
-                    id_san_pham_chi_tiet = hct.id_san_pham_chi_tiet,
-                    so_luong = hct.so_luong,
-                    don_gia = hct.SanPhamChiTiet.gia_ban,
-                    gia_sau_giam_gia = giaSauGiamGia,
-                    gia_tri_khuyen_mai_cua_hoa_don_cho_hdct = hct.gia_tri_khuyen_mai_cua_hoa_don_cho_hdct,
-                    thanh_tien = giaSauGiamGia * hct.so_luong,
-                    trang_thai = hct.trang_thai,
-                    ghi_chu = hct.ghi_chu,
-                    ngay_sua = hct.ngaySua,
-                    ten_nguoi_sua = hct.nguoiSua?.ten_nhan_vien,
-                    sanPhamChiTiet = hct.SanPhamChiTiet != null ? new SanPhamChiTiet_HoaDonChiTietAdminDTO
+                    // Nếu là hóa đơn chờ tại quầy thì tính lại giá, ngược lại giữ nguyên giá cũ
+                    decimal giaSauGiamGia = isChoTaiQuay
+                        ? await TinhTongTienSauGiamGiaSanPham(hct.id_san_pham_chi_tiet)
+                        : hct.gia_sau_giam_gia;
+
+                    decimal donGia = isChoTaiQuay
+                        ? (hct.SanPhamChiTiet?.gia_ban ?? hct.don_gia)  // Lấy giá hiện tại của sản phẩm hoặc giá gốc nếu không có
+                        : hct.don_gia;                                   // Giữ nguyên giá gốc đã lưu
+
+                    result.Add(new HoaDonChiTietAdminDTO
                     {
-                        id_san_pham_chi_tiet = hct.SanPhamChiTiet.id_san_pham_chi_tiet,
-                        ma_san_pham_chi_tiet = hct.SanPhamChiTiet.ma_san_pham_chi_tiet,
-                        ten_san_pham = hct.SanPhamChiTiet.SanPham?.ten_san_pham,
-                        ten_mau_sac = hct.SanPhamChiTiet.MauSac?.ten_mau_sac,
-                        ten_kich_co = hct.SanPhamChiTiet.KichCo?.ten_kich_co
-                    } : null
-                });
+                        id_hoa_don_chi_tiet = hct.id_hoa_don_chi_tiet,
+                        ma_hoa_don_chi_tiet = hct.ma_hoa_don_chi_tiet,
+                        id_hoa_don = hct.id_hoa_don,
+                        id_san_pham_chi_tiet = hct.id_san_pham_chi_tiet,
+                        so_luong = hct.so_luong,
+                        don_gia = donGia,
+
+                        gia_sau_giam_gia = giaSauGiamGia,
+                        gia_tri_khuyen_mai_cua_hoa_don_cho_hdct = hct.gia_tri_khuyen_mai_cua_hoa_don_cho_hdct,
+                        thanh_tien = giaSauGiamGia * hct.so_luong,
+                        trang_thai = hct.trang_thai,
+                        ghi_chu = hct.ghi_chu,
+                        ngay_sua = hct.ngay_sua,
+                        ten_nhan_vien_xu_ly = hct.NhanVienXuLy?.ten_nhan_vien,
+                        sanPhamChiTiet = hct.SanPhamChiTiet != null ? new SanPhamChiTiet_HoaDonChiTietAdminDTO
+                        {
+                            id_san_pham_chi_tiet = hct.SanPhamChiTiet.id_san_pham_chi_tiet,
+                            ma_san_pham_chi_tiet = hct.SanPhamChiTiet.ma_san_pham_chi_tiet,
+                            ten_san_pham = hct.SanPhamChiTiet.SanPham?.ten_san_pham,
+                            ten_mau_sac = hct.SanPhamChiTiet.MauSac?.ten_mau_sac,
+                            ten_kich_co = hct.SanPhamChiTiet.KichCo?.ten_kich_co
+                        } : null
+                    });
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Lỗi khi xử lý hóa đơn chi tiết: {ex.Message}");
+                    // Tiếp tục với chi tiết tiếp theo nếu có lỗi
+                    continue;
+                }
             }
             return result;
+        }
+        public async Task<(bool success, string message)> ThanhToanHoaDonChoTaiQuay(Guid id_hoa_don)
+        {
+            var hoaDon = await _hoaDonRepository.GetByIdWithIncludeAsync(id_hoa_don, q => q.Include(hd => hd.HoaDonChiTiets));
+            if (hoaDon == null)
+                return (false, "Hóa đơn không tồn tại");
+            if (hoaDon.trang_thai_hoa_don != "ChoTaiQuay")
+                return (false, "Hóa đơn không đang ở trạng thái chờ tại quầy");
+            if (hoaDon.tong_tien_phai_thanh_toan < 0)
+                return (false, "Tổng tiền phải thanh toán không hợp lệ");
+            if (hoaDon.so_tien_khach_tra < hoaDon.tong_tien_phai_thanh_toan)
+                return (false, "Số tiền khách trả không đủ để thanh toán");
+            if (hoaDon.id_phuong_thuc_thanh_toan == null)
+                return (false, "Phương thức thanh toán không tồn tại");
+            var cuaHang = await _cuaHangRepository.GetFirstOrDefaultAsync(x => x.id_cua_hang != Guid.Empty);
+            if (cuaHang == null)
+                return (false, "Cửa hàng không tồn tại");
+            hoaDon.trang_thai_hoa_don = "DaThanhToan";
+            hoaDon.id_cua_hang = cuaHang.id_cua_hang;
+            foreach (var hct in hoaDon.HoaDonChiTiets)
+            {
+                hct.trang_thai = "DaThanhToan";
+                hct.gia_tri_khuyen_mai_cua_hoa_don_cho_hdct = hoaDon.so_tien_khuyen_mai.HasValue ? hoaDon.so_tien_khuyen_mai.Value / hoaDon.HoaDonChiTiets.Count : 0;
+                var updateHoaDonChiTiet = await _hoaDonChiTietRepository.UpdateAsync(hct);
+                if (!updateHoaDonChiTiet)
+                    return (false, "Cập nhật trạng thái hóa đơn chi tiết thất bại");
+
+            }
+            var updateHoaDon = await _hoaDonRepository.UpdateAsync(hoaDon);
+            if (!updateHoaDon)
+                return (false, "Cập nhật trạng thái hóa đơn thất bại");
+            return (true, "Thanh toán hóa đơn thành công");
         }
 
     }

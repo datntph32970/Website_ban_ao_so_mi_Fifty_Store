@@ -11,6 +11,7 @@ namespace API.DbConects.DTOs.Admin.SanPham
         public int so_luong { get; set; }
         public decimal gia_ban { get; set; }
         public decimal gia_nhap { get; set; }
+        public int so_luong_da_ban { get; set; }
         public string trang_thai { get; set; }
         public DateTime ngay_tao { get; set; }
         public string ten_nguoi_tao { get; set; }

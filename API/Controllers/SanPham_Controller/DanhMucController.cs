@@ -37,6 +37,14 @@ namespace API.Controllers.SanPham_Controller
             return Ok(result);
         }
 
+        [HttpGet("active")]
+        public async Task<IActionResult> GetActiveCategories()
+        {
+            var allCategories = await _danhMucServices.GetAllWithIncludeAsync(cl => cl.Include(c => c.SanPhams));
+            var activeCategories = allCategories.Where(c => c.trang_thai == "HoatDong").ToList();
+            return Ok(activeCategories);
+        }
+
         [HttpPost]
         [Authorize(Roles = "Admin,NhanVien")]
         public async Task<IActionResult> Add(ThemDanhMucAdminDTO danhMucDTO)

@@ -10,6 +10,7 @@ using Microsoft.EntityFrameworkCore;
 using API.DTOs.KhuyenMai_DTOs;
 using System.Linq.Expressions;
 using API.Services;
+using System.Collections.Concurrent;
 
 namespace API.Controllers.KhuyenMai_Controller
 {
@@ -29,7 +30,8 @@ namespace API.Controllers.KhuyenMai_Controller
         private readonly IBaseService<KichCo> _kichCoServices;
         private readonly IBaseService<MauSac> _mauSacServices;
         private readonly IJwtServices _jwtServices;
-        private static readonly Dictionary<string, (DateTime Expiry, object Data)> _cache = new();
+        private static readonly ConcurrentDictionary<string, (DateTime Expiry, object Data)> _cache = new();
+        private static readonly object _cacheLock = new object();
 
         public GiamGiaController(IBaseService<GiamGia> giamGiaServices, IJwtServices jwtServices, IBaseService<SanPhamChiTiet> sanPhamChiTietServices, IBaseService<SanPham> sanPhamServices, IBaseService<ThuongHieu> thuongHieuServices, IBaseService<DanhMuc> danhMucServices, IBaseService<ChatLieu> chatLieuServices, IBaseService<KieuDang> kieuDangServices, IBaseService<XuatXu> xuatXuServices, IBaseService<KichCo> kichCoServices, IBaseService<MauSac> mauSacServices, ISanPhamService sanPham_Service)
         {
@@ -48,7 +50,10 @@ namespace API.Controllers.KhuyenMai_Controller
 
         private void ClearCache()
         {
-            _cache.Clear();
+            lock (_cacheLock)
+            {
+                _cache.Clear();
+            }
         }
 
         private Expression<Func<GiamGia, bool>> BuildFilterPredicate(
@@ -128,35 +133,46 @@ namespace API.Controllers.KhuyenMai_Controller
             string? sortBy = "ngay_tao",
             bool ascending = false)
         {
-            var cacheKey = $"giamgia_{trang_thai}_{tim_kiem}_{kieu_giam_gia}_{thoi_gian_bat_dau}_{thoi_gian_ket_thuc}_{page}_{pageSize}_{sortBy}_{ascending}";
-
-            if (_cache.TryGetValue(cacheKey, out var cachedData) && cachedData.Expiry > DateTime.Now)
+            try
             {
-                return Ok(cachedData.Data);
+                var cacheKey = $"giamgia_{trang_thai}_{tim_kiem}_{kieu_giam_gia}_{thoi_gian_bat_dau}_{thoi_gian_ket_thuc}_{page}_{pageSize}_{sortBy}_{ascending}";
+
+                if (_cache.TryGetValue(cacheKey, out var cachedData) && cachedData.Expiry > DateTime.Now)
+                {
+                    return Ok(cachedData.Data);
+                }
+
+                var predicate = BuildFilterPredicate(trang_thai, tim_kiem, kieu_giam_gia, thoi_gian_bat_dau, thoi_gian_ket_thuc);
+                var giamGias = await _giamGiaServices.GetByConditionAsync(predicate);
+                var sortedGiamGias = ApplySorting(giamGias, sortBy, ascending);
+
+                var totalItems = sortedGiamGias.Count();
+                var totalPages = (int)Math.Ceiling(totalItems / (double)pageSize);
+                var pagedGiamGias = sortedGiamGias
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToList();
+
+                var result = new
+                {
+                    Data = pagedGiamGias,
+                    TotalItems = totalItems,
+                    TotalPages = totalPages,
+                    CurrentPage = page,
+                    PageSize = pageSize
+                };
+
+                // Thread-safe cache update with 30 seconds expiration
+                _cache.AddOrUpdate(cacheKey,
+                    key => (DateTime.Now.AddSeconds(30), result),
+                    (key, oldValue) => (DateTime.Now.AddSeconds(30), result));
+
+                return Ok(result);
             }
-
-            var predicate = BuildFilterPredicate(trang_thai, tim_kiem, kieu_giam_gia, thoi_gian_bat_dau, thoi_gian_ket_thuc);
-            var giamGias = await _giamGiaServices.GetByConditionAsync(predicate);
-            var sortedGiamGias = ApplySorting(giamGias, sortBy, ascending);
-
-            var totalItems = sortedGiamGias.Count();
-            var totalPages = (int)Math.Ceiling(totalItems / (double)pageSize);
-            var pagedGiamGias = sortedGiamGias
-                .Skip((page - 1) * pageSize)
-                .Take(pageSize)
-                .ToList();
-
-            var result = new
+            catch (Exception ex)
             {
-                Data = pagedGiamGias,
-                TotalItems = totalItems,
-                TotalPages = totalPages,
-                CurrentPage = page,
-                PageSize = pageSize
-            };
-
-            _cache[cacheKey] = (DateTime.Now.AddMinutes(1), result);
-            return Ok(result);
+                return BadRequest($"Đã có lỗi xảy ra: {ex.Message}");
+            }
         }
         // lấy danh sách giảm giá đang hoạt động
         [HttpGet("active")]

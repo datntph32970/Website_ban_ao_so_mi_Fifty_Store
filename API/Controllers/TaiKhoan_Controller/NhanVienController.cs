@@ -286,7 +286,7 @@ namespace API.Controllers.TaiKhoan_Controller
             // Tìm kiếm nhân viên với các bảng liên quan
             var nhanVien = await _nhanVienService.GetByIdWithIncludeAsync(
                 Guid.Parse(xoaNhanVienAdminDTO.id_nhan_vien),
-                q => q.Include(n => n.TaoHoaDons)
+                q => q.Include(n => n.XulyHoaDons)
                       .Include(n => n.TaoXuatXus)
                       .Include(n => n.SuaXuatXus)
                       .Include(n => n.TaoSanPhamChiTiets)
@@ -318,7 +318,7 @@ namespace API.Controllers.TaiKhoan_Controller
             }
 
             // Kiểm tra nếu nhân viên có dữ liệu liên quan
-            if (nhanVien.TaoHoaDons?.Any() == true ||
+            if (nhanVien.XulyHoaDons?.Any() == true ||
                 nhanVien.TaoXuatXus?.Any() == true ||
                 nhanVien.SuaXuatXus?.Any() == true ||
                 nhanVien.TaoSanPhamChiTiets?.Any() == true ||

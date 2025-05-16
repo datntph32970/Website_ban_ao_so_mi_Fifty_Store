@@ -17,7 +17,7 @@ namespace API.Repositories.Interfaces
 
         // Advanced Query Operations
         Task<List<T>> GetByConditionAsync(Expression<Func<T, bool>> expression);
-        Task<List<T>> GetByConditionWithIncludeAsync(Expression<Func<T, bool>> expression, params Expression<Func<T, object>>[] includes);
+        Task<List<T>> GetByConditionWithIncludeAsync(Expression<Func<T, bool>> expression, params Func<IQueryable<T>, IIncludableQueryable<T, object>>[] includes);
         Task<T> GetFirstOrDefaultAsync(Expression<Func<T, bool>> expression);
         Task<bool> ExistsAsync(Expression<Func<T, bool>> expression);
         Task<int> CountAsync(Expression<Func<T, bool>> expression = null);

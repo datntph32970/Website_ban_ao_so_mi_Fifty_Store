@@ -25,7 +25,7 @@ namespace API.Services.Implementations
         public async Task<bool> UpdateAsync(T entity) => await _repository.UpdateAsync(entity);
         public async Task<bool> DeleteAsync(Guid id) => await _repository.DeleteAsync(id);
         public async Task<List<T>> GetByConditionAsync(Expression<Func<T, bool>> expression) => await _repository.GetByConditionAsync(expression);
-        public async Task<List<T>> GetByConditionWithIncludeAsync(Expression<Func<T, bool>> expression, params Expression<Func<T, object>>[] includes) => await _repository.GetByConditionWithIncludeAsync(expression, includes);
+        public async Task<List<T>> GetByConditionWithIncludeAsync(Expression<Func<T, bool>> expression, params Func<IQueryable<T>, IIncludableQueryable<T, object>>[] includes) => await _repository.GetByConditionWithIncludeAsync(expression, includes);
         public async Task<T> GetFirstOrDefaultAsync(Expression<Func<T, bool>> expression) => await _repository.GetFirstOrDefaultAsync(expression);
         public async Task<bool> ExistsAsync(Expression<Func<T, bool>> expression) => await _repository.ExistsAsync(expression);
         public async Task<int> CountAsync(Expression<Func<T, bool>> expression = null) => await _repository.CountAsync(expression);

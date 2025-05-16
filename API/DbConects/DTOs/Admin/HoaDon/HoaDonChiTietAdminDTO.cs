@@ -18,7 +18,7 @@ namespace API.DbConects.DTOs.Admin.HoaDon
         public string trang_thai { get; set; }
         public string ghi_chu { get; set; }
         public DateTime? ngay_sua { get; set; }
-        public string ten_nguoi_sua { get; set; }
+        public string ten_nhan_vien_xu_ly { get; set; }
         public SanPhamChiTiet_HoaDonChiTietAdminDTO sanPhamChiTiet { get; set; }
         public HoaDonAdminDTO hoaDon { get; set; }
         public NhanVien_HoaDonAdminDTO nhanVien { get; set; }

@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using API.DbConects.DTOs.Admin.HoaDon;
+using API.DbConects.DTOs.Client.HoaDon;
 
 namespace API.DbConects.DTOs.Admin.TaiKhoan
 {
@@ -8,14 +9,16 @@ namespace API.DbConects.DTOs.Admin.TaiKhoan
         public Guid id_khach_hang { get; set; }
         public string ma_khach_hang { get; set; }
         public string? ten_khach_hang { get; set; }
-        public DateTime? ngay_sinh { get; set; }
+        public DateOnly? ngay_sinh { get; set; }
         public string? so_dien_thoai { get; set; }
         public string? email { get; set; }
         public string? gioi_tinh { get; set; }
         public string trang_thai { get; set; }
         public DateTime ngay_tao { get; set; }
+        public int so_dia_chi { get; set; }
+        public int so_don_hang { get; set; }
 
-        public virtual ICollection<GioHangItemsDTO>? gioHangItemsDTOs { get; set; }
+        public virtual ICollection<GioHangItemClientDTO>? gioHangItemsDTOs { get; set; }
         public virtual ICollection<HoaDonAdminDTO>? hoaDonDTOs { get; set; }
         public virtual ICollection<DiaChiDTO>? diaChiDTOs { get; set; }
     }
@@ -36,7 +39,7 @@ namespace API.DbConects.DTOs.Admin.TaiKhoan
         public string? ten_khach_hang { get; set; }
 
         [RegularExpression(@"^\d{4}-\d{2}-\d{2}$", ErrorMessage = "Ngày sinh phải có định dạng yyyy-MM-dd")]
-        public DateTime? ngay_sinh { get; set; }
+        public DateOnly? ngay_sinh { get; set; }
 
         [RegularExpression("^(Nam|Nu)$", ErrorMessage = "Giới tính phải là 'Nam' hoặc 'Nu'")]
         public string? gioi_tinh { get; set; }
