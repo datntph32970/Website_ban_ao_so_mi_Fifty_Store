@@ -136,16 +136,6 @@ namespace API.DbConects
                 },
                 new PhuongThucThanhToan
                 {
-                    id_phuong_thuc_thanh_toan = new Guid("12345678-9012-3456-7890-123456789013"),
-                    ten_phuong_thuc_thanh_toan = "Chuyển khoản",
-                    ma_phuong_thuc_thanh_toan = "PTCKHOAN",
-                    mo_ta = "Phương thức thanh toán chuyển khoản",
-                    trang_thai = true,
-                    ngay_tao = DateTime.Parse("2025-04-21"),
-                    id_nguoi_tao = new Guid("00000000-0000-0000-0000-000000000001")
-                },
-                new PhuongThucThanhToan
-                {
                     id_phuong_thuc_thanh_toan = new Guid("12345678-9012-3456-4213-123456781321"),
                     ten_phuong_thuc_thanh_toan = "VNPAY",
                     ma_phuong_thuc_thanh_toan = "VNPAY",
