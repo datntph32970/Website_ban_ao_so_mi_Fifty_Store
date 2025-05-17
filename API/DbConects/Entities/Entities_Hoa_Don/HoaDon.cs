@@ -33,7 +33,7 @@ namespace API.DbConects.Entities.Entities_Hoa_Don
         [ForeignKey("KhachHang")]
         public Guid? id_khach_hang { get; set; }
         [ForeignKey("NhanVienXuLy")]
-        public Guid id_nhan_vien_xu_ly { get; set; }
+        public Guid? id_nhan_vien_xu_ly { get; set; }
         [ForeignKey("CuaHang")]
         public Guid? id_cua_hang { get; set; }
 

@@ -1,6 +1,8 @@
 using API.DbConects;
 using API.Extensions;
 using API.Filters;
+using API.Services;
+using API.DbConects.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 using System.Text.Json.Serialization;
@@ -68,6 +70,14 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 });
 #endregion
 
+// Add HttpContextAccessor
+builder.Services.AddHttpContextAccessor();
+
+// Add VNPay configuration
+builder.Services.Configure<VNPayConfig>(builder.Configuration.GetSection("VNPay"));
+
+// Add VNPay service
+builder.Services.AddScoped<VNPayService>();
 
 var app = builder.Build();
 

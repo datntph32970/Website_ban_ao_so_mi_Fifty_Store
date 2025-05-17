@@ -127,6 +127,10 @@ namespace API.Controllers.KhuyenMai_Controller
             {
                 khuyenMaiDTO.ma_khuyen_mai = await TaoMaKhuyenMai();
             }
+            else if (khuyenMaiDTO.ma_khuyen_mai.Contains(" "))
+            {
+                khuyenMaiDTO.ma_khuyen_mai = khuyenMaiDTO.ma_khuyen_mai.Replace(" ", "");
+            }
             var khuyenMai = new KhuyenMai
             {
                 id_khuyen_mai = Guid.NewGuid(),
@@ -352,5 +356,7 @@ namespace API.Controllers.KhuyenMai_Controller
                 return BadRequest($"Đã có lỗi xảy ra: {ex.Message}");
             }
         }
+
+
     }
 }

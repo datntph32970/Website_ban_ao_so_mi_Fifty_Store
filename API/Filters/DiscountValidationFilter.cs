@@ -22,9 +22,11 @@ namespace API.Filters
             {
 
                 var sanPhamService = scope.ServiceProvider.GetRequiredService<ISanPhamService>();
+                var hoaDonService = scope.ServiceProvider.GetRequiredService<IHoaDonService>();
 
                 await sanPhamService.RemoveInvalidDiscountsAsync();
                 await sanPhamService.RemoveInvalidPromotionsAsync();
+                await hoaDonService.XoaHoaDonChuaThanhToanQuaHan();
             }
 
             await next();

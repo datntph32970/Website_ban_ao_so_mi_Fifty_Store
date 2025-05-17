@@ -21,7 +21,7 @@ namespace API.DbConects.DTOs.Admin.HoaDon
         public decimal? so_tien_khuyen_mai { get; set; }
         public decimal tong_tien_phai_thanh_toan { get; set; }
         public string trang_thai { get; set; }
-        public string phuong_thuc_thanh_toan { get; set; }
+        public string ten_phuong_thuc_thanh_toan { get; set; }
         public DateTime ngay_tao { get; set; }
         public string ten_nguoi_xu_ly { get; set; }
         public NhanVien_HoaDonAdminDTO nhanVienXuLy { get; set; }
@@ -89,8 +89,6 @@ namespace API.DbConects.DTOs.Admin.HoaDon
     {
         public int trang_hien_tai { get; set; }
         public int so_phan_tu_tren_trang { get; set; }
-        public int tong_so_trang { get; set; }
-        public int tong_so_phan_tu { get; set; }
         public string? tim_kiem { get; set; }
         public string? trang_thai { get; set; }
         public string? loai_hoa_don { get; set; }

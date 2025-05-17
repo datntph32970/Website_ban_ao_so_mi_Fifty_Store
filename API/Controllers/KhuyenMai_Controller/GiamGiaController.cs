@@ -219,6 +219,10 @@ namespace API.Controllers.KhuyenMai_Controller
                 giamGia.ma_giam_gia = await GenerateMaGiamGia();
             else
             {
+                if (giamGia.ma_giam_gia.Contains(" "))
+                {
+                    giamGia.ma_giam_gia = giamGia.ma_giam_gia.Replace(" ", "");
+                }
                 var existingGiamGiaMa = await _giamGiaServices.ExistsAsync(g => g.ma_giam_gia == giamGia.ma_giam_gia);
                 if (existingGiamGiaMa)
                     return BadRequest("Mã giảm giá đã tồn tại");

@@ -12,6 +12,7 @@ namespace API.Services.JwtServices
         bool ValidateToken(string token);
         ClaimsPrincipal GetPrincipalFromExpiredToken(string token);
         ThongTinNguoiDung LayThonTinNguoiDung(string token);
+        Guid? GetIdKhachHangFromToken(string token);
 
     }
 }

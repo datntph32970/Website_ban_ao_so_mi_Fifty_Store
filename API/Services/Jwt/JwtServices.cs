@@ -13,11 +13,13 @@ namespace API.Services.JwtServices
         private readonly string _secret;
         private readonly IBaseRepository<TaiKhoan> _taiKhoanRepository;
         private readonly IBaseRepository<NhanVien> _nhanVienRepository;
-        public JwtServices(IConfiguration configuration, IBaseRepository<TaiKhoan> taiKhoanRepository, IBaseRepository<NhanVien> nhanVienRepository)
+        private readonly IBaseRepository<KhachHang> _khachHangRepository;
+        public JwtServices(IConfiguration configuration, IBaseRepository<TaiKhoan> taiKhoanRepository, IBaseRepository<NhanVien> nhanVienRepository, IBaseRepository<KhachHang> khachHangRepository)
         {
             _secret = configuration["Jwt:Key"];
             _taiKhoanRepository = taiKhoanRepository;
             _nhanVienRepository = nhanVienRepository;
+            _khachHangRepository = khachHangRepository;
         }
 
         public string GenerateJwtToken(Guid userId, string username, string role, string mataikhoan)
@@ -135,6 +137,20 @@ namespace API.Services.JwtServices
 
             return nhanVien?.id_nhan_vien;
         }
+        public Guid? GetIdKhachHangFromToken(string token)
+        {
+            if (token == null)
+                return null;
 
+            var jwtToken = new JwtSecurityTokenHandler().ReadToken(token) as JwtSecurityToken;
+            var idTaiKhoanClaim = jwtToken?.Claims.FirstOrDefault(claim => claim.Type == "id_tai_khoan");
+
+            if (idTaiKhoanClaim == null)
+                return null;
+
+            var khachHang = _khachHangRepository.GetByConditionAsync(x => x.id_tai_khoan == Guid.Parse(idTaiKhoanClaim.Value)).Result;
+
+            return khachHang?.FirstOrDefault()?.id_khach_hang;
+        }
     }
 }

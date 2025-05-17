@@ -1,5 +1,6 @@
 using API.DbConects.DTOs.Admin.HoaDon;
 using API.DbConects.DTOs.Admin.SanPham;
+using API.DbConects.DTOs.Client.HoaDon;
 using API.DbConects.Entities.Entities_Hoa_Don;
 using API.DbConects.Entities.Entities_Khuyen_Mai;
 using API.DbConects.Entities.Entities_San_Pham;
@@ -20,10 +21,27 @@ namespace API.Services.Implementations
         private readonly IBaseRepository<KhachHang> _khachHangRepository;
         private readonly IBaseRepository<NhanVien> _nhanVienRepository;
         private readonly IBaseRepository<KhuyenMai> _khuyenMaiRepository;
+        private readonly IBaseRepository<PhuongThucThanhToan> _phuongThucThanhToanRepository;
         private readonly IBaseRepository<GiamGia> _giamGiaRepository;
+        private readonly IBaseRepository<DiaChi> _diaChiRepository;
         private readonly IBaseRepository<CuaHang> _cuaHangRepository;
+        private readonly IBaseRepository<GioHangChiTiet> _gioHangChiTietRepository;
+        private readonly VNPayService _vnPayService;
 
-        public HoaDonService(IBaseRepository<HoaDon> hoaDonRepository, IBaseRepository<HoaDonChiTiet> hoaDonChiTietRepository, IBaseRepository<SanPhamChiTiet> sanPhamChiTietRepository, IBaseRepository<SanPham> sanPhamRepository, IBaseRepository<KhachHang> khachHangRepository, IBaseRepository<NhanVien> nhanVienRepository, IBaseRepository<KhuyenMai> khuyenMaiRepository, IBaseRepository<GiamGia> giamGiaRepository, IBaseRepository<CuaHang> cuaHangRepository) : base(hoaDonRepository)
+        public HoaDonService(
+            IBaseRepository<HoaDon> hoaDonRepository,
+            IBaseRepository<HoaDonChiTiet> hoaDonChiTietRepository,
+            IBaseRepository<SanPhamChiTiet> sanPhamChiTietRepository,
+            IBaseRepository<SanPham> sanPhamRepository,
+            IBaseRepository<KhachHang> khachHangRepository,
+            IBaseRepository<NhanVien> nhanVienRepository,
+            IBaseRepository<KhuyenMai> khuyenMaiRepository,
+            IBaseRepository<PhuongThucThanhToan> phuongThucThanhToanRepository,
+            IBaseRepository<GiamGia> giamGiaRepository,
+            IBaseRepository<CuaHang> cuaHangRepository,
+            IBaseRepository<GioHangChiTiet> gioHangChiTietRepository,
+            IBaseRepository<DiaChi> diaChiRepository,
+            VNPayService vnPayService) : base(hoaDonRepository)
         {
             _hoaDonRepository = hoaDonRepository;
             _hoaDonChiTietRepository = hoaDonChiTietRepository;
@@ -34,6 +52,10 @@ namespace API.Services.Implementations
             _khuyenMaiRepository = khuyenMaiRepository;
             _giamGiaRepository = giamGiaRepository;
             _cuaHangRepository = cuaHangRepository;
+            _gioHangChiTietRepository = gioHangChiTietRepository;
+            _vnPayService = vnPayService;
+            _phuongThucThanhToanRepository = phuongThucThanhToanRepository;
+            _diaChiRepository = diaChiRepository;
         }
 
         public async Task<List<HoaDonAdminDTO>> GetAllHoaDonAdminDTOAsync()
@@ -56,7 +78,7 @@ namespace API.Services.Implementations
                 ma_hoa_don = hd.ma_hoa_don,
                 id_khach_hang = hd.id_khach_hang != null ? hd.id_khach_hang : null,
                 ten_khach_hang = hd.id_khach_hang != null ? hd.KhachHang.ten_khach_hang : "Khách lẻ",
-                ten_nguoi_xu_ly = hd.NhanVienXuLy.ten_nhan_vien,
+                ten_nguoi_xu_ly = hd.NhanVienXuLy?.ten_nhan_vien,
                 sdt_khach_hang = hd.id_khach_hang != null ? hd.KhachHang.so_dien_thoai : null,
                 dia_chi_nhan_hang = hd.id_khach_hang != null ? hd.dia_chi_nhan_hang : null,
                 ghi_chu = hd.ghi_chu,
@@ -69,7 +91,7 @@ namespace API.Services.Implementations
                 so_tien_khuyen_mai = hd.id_khuyen_mai != null ? hd.so_tien_khuyen_mai : null,
                 tong_tien_phai_thanh_toan = hd.tong_tien_phai_thanh_toan ?? 0,
                 trang_thai = hd.trang_thai_hoa_don,
-                phuong_thuc_thanh_toan = hd.PhuongThucThanhToan?.ten_phuong_thuc_thanh_toan,
+                ten_phuong_thuc_thanh_toan = hd.PhuongThucThanhToan?.ten_phuong_thuc_thanh_toan,
                 ngay_tao = hd.ngay_tao,
 
                 nhanVienXuLy = hd.NhanVienXuLy != null ? new NhanVien_HoaDonAdminDTO
@@ -93,6 +115,7 @@ namespace API.Services.Implementations
         {
             var result = await _hoaDonRepository.GetByIdWithIncludeAsync(id, q => q.Include(hd => hd.KhachHang)
                                                                        .Include(hd => hd.NhanVienXuLy)
+                                                                       .Include(hd => hd.KhuyenMai)
                                                                        .Include(hd => hd.CuaHang)
                                                                        .ThenInclude(ch => ch.HinhAnh)
                                                                        .Include(hd => hd.PhuongThucThanhToan)
@@ -104,7 +127,23 @@ namespace API.Services.Implementations
                                                                        .ThenInclude(spct => spct.MauSac)
                                                                        .Include(hd => hd.HoaDonChiTiets)
                                                                        .ThenInclude(hct => hct.SanPhamChiTiet)
-                                                                       .ThenInclude(spct => spct.KichCo));
+                                                                       .ThenInclude(spct => spct.KichCo)
+                                                                       .Include(hd => hd.HoaDonChiTiets)
+                                                                       .ThenInclude(hct => hct.SanPhamChiTiet)
+                                                                       .ThenInclude(spct => spct.HinhAnhSanPhamChiTiets)
+                                                                       .ThenInclude(hct => hct.HinhAnhs));
+
+            if (result == null)
+                return null;
+
+            // Recalculate totals if order is in ChuaThanhToan or ChoTaiQuay status
+            if (result.trang_thai_hoa_don == "ChuaThanhToan" || result.trang_thai_hoa_don == "ChoTaiQuay")
+            {
+                var (tongTienSauKhuyenMai, giaTriKhuyenMai) = await CapNhatTongTienVaGiaTriKhuyenMai(result.id_hoa_don);
+                result.tong_tien_phai_thanh_toan = tongTienSauKhuyenMai;
+                result.so_tien_khuyen_mai = giaTriKhuyenMai;
+                await _hoaDonRepository.UpdateAsync(result);
+            }
 
             return new HoaDonAdminDTO
             {
@@ -112,7 +151,7 @@ namespace API.Services.Implementations
                 ma_hoa_don = result.ma_hoa_don,
                 id_khach_hang = result.id_khach_hang != null ? result.id_khach_hang : null,
                 ten_khach_hang = result.id_khach_hang != null ? result.KhachHang.ten_khach_hang : "Khách lẻ",
-                ten_nguoi_xu_ly = result.NhanVienXuLy.ten_nhan_vien,
+                ten_nguoi_xu_ly = result.NhanVienXuLy?.ten_nhan_vien,
                 sdt_khach_hang = result.id_khach_hang != null ? result.KhachHang.so_dien_thoai : null,
                 dia_chi_nhan_hang = result.id_khach_hang != null ? result.dia_chi_nhan_hang : null,
                 ghi_chu = result.ghi_chu,
@@ -125,8 +164,17 @@ namespace API.Services.Implementations
                 so_tien_khuyen_mai = result.id_khuyen_mai != null ? result.so_tien_khuyen_mai : null,
                 tong_tien_phai_thanh_toan = result.tong_tien_phai_thanh_toan ?? 0,
                 trang_thai = result.trang_thai_hoa_don,
-                phuong_thuc_thanh_toan = result.PhuongThucThanhToan?.ten_phuong_thuc_thanh_toan,
+                ten_phuong_thuc_thanh_toan = result.PhuongThucThanhToan?.ten_phuong_thuc_thanh_toan,
                 ngay_tao = result.ngay_tao,
+                khuyenMai = result.KhuyenMai == null ? null : new KhuyenMai_HoaDonAdminDTO
+                {
+                    id_khuyen_mai = result.KhuyenMai.id_khuyen_mai,
+                    ten_khuyen_mai = result.KhuyenMai.ten_khuyen_mai,
+                    ma_khuyen_mai = result.KhuyenMai.ma_khuyen_mai,
+                    loai_khuyen_mai = result.KhuyenMai.kieu_khuyen_mai,
+                    gia_tri_khuyen_mai = result.KhuyenMai.gia_tri_giam,
+                    gia_tri_giam_toi_da = result.KhuyenMai.gia_tri_giam_toi_da
+                },
                 cuaHang = result.CuaHang == null ? null : new CuaHang_HoaDonAdminDTO
                 {
                     id_cua_hang = result.CuaHang.id_cua_hang,
@@ -138,7 +186,7 @@ namespace API.Services.Implementations
                     mo_ta = result.CuaHang.mo_ta,
                     hinh_anh_logo_cua_hang_url = result.CuaHang.HinhAnh?.url
                 },
-                nhanVienXuLy = new NhanVien_HoaDonAdminDTO
+                nhanVienXuLy = result.NhanVienXuLy == null ? null : new NhanVien_HoaDonAdminDTO
                 {
                     id_nhan_vien = result.NhanVienXuLy.id_nhan_vien,
                     ma_nhan_vien = result.NhanVienXuLy.ma_nhan_vien,
@@ -452,7 +500,7 @@ namespace API.Services.Implementations
             var tongTienDonHang = await TinhTongTienDonHang(id_hoa_don);
 
             decimal giaTriKhuyenMai = 0;
-            decimal tongTienSauKhuyenMai = tongTienDonHang;
+            decimal tongTienSauKhuyenMai = tongTienDonHang + (hoaDon.phi_van_chuyen ?? 0);
 
             if (hoaDon.id_khuyen_mai == null)
             {
@@ -477,12 +525,12 @@ namespace API.Services.Implementations
             {
                 giaTriKhuyenMai = tongTienDonHang * khuyenMai.gia_tri_giam / 100;
                 giaTriKhuyenMai = Math.Min(giaTriKhuyenMai, khuyenMai.gia_tri_giam_toi_da);
-                tongTienSauKhuyenMai = tongTienDonHang - giaTriKhuyenMai;
+                tongTienSauKhuyenMai = tongTienDonHang - giaTriKhuyenMai + (hoaDon.phi_van_chuyen ?? 0);
             }
             else if (khuyenMai.kieu_khuyen_mai == "TienMat")
             {
                 giaTriKhuyenMai = khuyenMai.gia_tri_giam;
-                tongTienSauKhuyenMai = tongTienDonHang - giaTriKhuyenMai;
+                tongTienSauKhuyenMai = tongTienDonHang - giaTriKhuyenMai + (hoaDon.phi_van_chuyen ?? 0);
 
             }
             if (tongTienSauKhuyenMai < 0)
@@ -554,7 +602,7 @@ namespace API.Services.Implementations
                 ma_hoa_don = result.ma_hoa_don,
                 id_khach_hang = result.id_khach_hang,
                 ten_khach_hang = result.KhachHang?.ten_khach_hang ?? "Khách lẻ",
-                ten_nguoi_xu_ly = result.NhanVienXuLy.ten_nhan_vien,
+                ten_nguoi_xu_ly = result.NhanVienXuLy?.ten_nhan_vien,
                 sdt_khach_hang = result.KhachHang?.so_dien_thoai,
                 dia_chi_nhan_hang = result.dia_chi_nhan_hang,
                 ghi_chu = result.ghi_chu,
@@ -566,10 +614,10 @@ namespace API.Services.Implementations
                 so_tien_khuyen_mai = result.so_tien_khuyen_mai,
                 tong_tien_phai_thanh_toan = result.tong_tien_phai_thanh_toan ?? 0,
                 trang_thai = result.trang_thai_hoa_don,
-                phuong_thuc_thanh_toan = result.PhuongThucThanhToan?.ten_phuong_thuc_thanh_toan,
+                ten_phuong_thuc_thanh_toan = result.PhuongThucThanhToan?.ten_phuong_thuc_thanh_toan,
                 ngay_tao = result.ngay_tao,
 
-                nhanVienXuLy = new NhanVien_HoaDonAdminDTO
+                nhanVienXuLy = result.NhanVienXuLy == null ? null : new NhanVien_HoaDonAdminDTO
                 {
                     id_nhan_vien = result.NhanVienXuLy.id_nhan_vien,
                     ma_nhan_vien = result.NhanVienXuLy.ma_nhan_vien,
@@ -602,7 +650,7 @@ namespace API.Services.Implementations
             {
                 var spct = await _sanPhamChiTietRepository.GetByIdAsync(hdct.id_san_pham_chi_tiet);
                 hdct.don_gia = spct.gia_ban;
-                hdct.gia_sau_giam_gia = await TinhTongTienSauGiamGiaSanPham(spct.id_san_pham_chi_tiet);
+                hdct.gia_sau_giam_gia = await TinhTongTienSauGiamGiaSanPham(hdct.id_san_pham_chi_tiet);
                 hdct.thanh_tien = hdct.gia_sau_giam_gia * hdct.so_luong;
                 await _hoaDonChiTietRepository.UpdateAsync(hdct);
                 tongTien += hdct.thanh_tien;
@@ -658,7 +706,7 @@ namespace API.Services.Implementations
                 return new List<HoaDonChiTietAdminDTO>();
             }
 
-            var isChoTaiQuay = hoaDon.trang_thai_hoa_don == "ChoTaiQuay";
+            var isChoTaiQuay = hoaDon.trang_thai_hoa_don == "ChoTaiQuay" || hoaDon.trang_thai_hoa_don == "ChuaThanhToan";
             var result = new List<HoaDonChiTietAdminDTO>();
 
             foreach (var hct in chiTiets)
@@ -695,6 +743,7 @@ namespace API.Services.Implementations
                             id_san_pham_chi_tiet = hct.SanPhamChiTiet.id_san_pham_chi_tiet,
                             ma_san_pham_chi_tiet = hct.SanPhamChiTiet.ma_san_pham_chi_tiet,
                             ten_san_pham = hct.SanPhamChiTiet.SanPham?.ten_san_pham,
+                            url_anh_san_pham_chi_tiet = hct.SanPhamChiTiet.HinhAnhSanPhamChiTiets?.FirstOrDefault()?.HinhAnhs?.url,
                             ten_mau_sac = hct.SanPhamChiTiet.MauSac?.ten_mau_sac,
                             ten_kich_co = hct.SanPhamChiTiet.KichCo?.ten_kich_co
                         } : null
@@ -741,6 +790,251 @@ namespace API.Services.Implementations
                 return (false, "Cập nhật trạng thái hóa đơn thất bại");
             return (true, "Thanh toán hóa đơn thành công");
         }
+        public async Task<(bool success, string message, Guid id_hoa_don)> TaoHoaDonOnlineTrangThaiChuaThanhToan(Guid id_khach_hang, decimal phi_van_chuyen)
+        {
 
+
+            var khachHang = await _khachHangRepository.GetByIdWithIncludeAsync(id_khach_hang, q => q.Include(x => x.DiaChis));
+            if (khachHang == null)
+                return (false, "Khách hàng không tồn tại", Guid.Empty);
+            if (khachHang.DiaChis.Count == 0)
+                return (false, "Khách hàng không có địa chỉ nhận hàng", Guid.Empty);
+            var diaChi = khachHang.DiaChis.Where(x => x.dia_chi_mac_dinh == true).FirstOrDefault();
+            if (diaChi == null)
+                return (false, "Khách hàng không có địa chỉ nhận hàng", Guid.Empty);
+
+            var cuaHang = await _cuaHangRepository.GetFirstOrDefaultAsync(x => x.id_cua_hang != Guid.Empty);
+            var phuongThucThanhToan = await _phuongThucThanhToanRepository.GetFirstOrDefaultAsync(x => x.ten_phuong_thuc_thanh_toan == "Tiền mặt");
+            if (phuongThucThanhToan == null)
+                return (false, "Phương thức thanh toán tiền mặt không tồn tại", Guid.Empty);
+            var hoadonNew = new HoaDon
+            {
+                id_hoa_don = Guid.NewGuid(),
+                ma_hoa_don = await TaoMaHoaDon(),
+                id_khach_hang = id_khach_hang,
+                trang_thai_hoa_don = "ChuaThanhToan",
+                loai_hoa_don = "Online",
+                ngay_tao = DateTime.Now,
+                phi_van_chuyen = phi_van_chuyen,
+                id_phuong_thuc_thanh_toan = phuongThucThanhToan.id_phuong_thuc_thanh_toan
+            };
+            await _hoaDonRepository.CreateAsync(hoadonNew);
+
+            var gioHangItems = await _gioHangChiTietRepository.GetByConditionWithIncludeAsync(x => x.id_khach_hang == id_khach_hang, q => q.Include(x => x.SanPhamChiTiet).ThenInclude(x => x.SanPham).Include(x => x.SanPhamChiTiet).ThenInclude(x => x.MauSac).Include(x => x.SanPhamChiTiet).ThenInclude(x => x.KichCo));
+
+            decimal tongTienDonHang = 0;
+            foreach (var item in gioHangItems)
+            {
+                if (item.so_luong > item.SanPhamChiTiet.so_luong)
+                {
+                    return (false, $"Số lượng sản phẩm {item.SanPhamChiTiet.SanPham.ten_san_pham} - {item.SanPhamChiTiet.MauSac.ten_mau_sac} - {item.SanPhamChiTiet.KichCo.ten_kich_co} không đủ {item.so_luong} sản phẩm", Guid.Empty);
+                }
+                var hoaDonChiTiet = new HoaDonChiTiet
+                {
+                    id_hoa_don_chi_tiet = Guid.NewGuid(),
+                    id_hoa_don = hoadonNew.id_hoa_don,
+                    ma_hoa_don_chi_tiet = await TaoMaHoaDonChiTiet(hoadonNew.id_hoa_don),
+                    id_san_pham_chi_tiet = item.id_san_pham_chi_tiet,
+                    ten_san_pham = item.SanPhamChiTiet.SanPham.ten_san_pham,
+                    ten_mau_sac = item.SanPhamChiTiet.MauSac.ten_mau_sac,
+                    ten_kich_co = item.SanPhamChiTiet.KichCo.ten_kich_co,
+                    so_luong = item.so_luong,
+
+                    don_gia = item.SanPhamChiTiet.gia_ban,
+                    gia_sau_giam_gia = await TinhTongTienSauGiamGiaSanPham(item.id_san_pham_chi_tiet),
+                    gia_tri_khuyen_mai_cua_hoa_don_cho_hdct = 0,
+                    trang_thai = "ChuaThanhToan",
+                    ghi_chu = null,
+                };
+                hoaDonChiTiet.thanh_tien = hoaDonChiTiet.gia_sau_giam_gia * hoaDonChiTiet.so_luong;
+                tongTienDonHang += hoaDonChiTiet.thanh_tien;
+                await _hoaDonChiTietRepository.CreateAsync(hoaDonChiTiet);
+
+
+                var gioHangChiTiet = await _gioHangChiTietRepository.GetByIdAsync(item.id_gio_hang_chi_tiet);
+                if (gioHangChiTiet != null)
+                {
+                    await _gioHangChiTietRepository.DeleteAsync(gioHangChiTiet.id_gio_hang_chi_tiet);
+                }
+            }
+            hoadonNew.tong_tien_don_hang = tongTienDonHang;
+            hoadonNew.tong_tien_phai_thanh_toan = tongTienDonHang + phi_van_chuyen;
+            hoadonNew.ten_khach_hang = khachHang.ten_khach_hang;
+            hoadonNew.sdt_khach_hang = khachHang.so_dien_thoai;
+            hoadonNew.dia_chi_nhan_hang = diaChi.tinh + ", " + diaChi.huyen + ", " + diaChi.xa + ", " + diaChi.dia_chi_cu_the;
+            hoadonNew.id_cua_hang = cuaHang.id_cua_hang == null ? Guid.Empty : cuaHang.id_cua_hang;
+            await _hoaDonRepository.UpdateAsync(hoadonNew);
+            return (true, "Tạo hóa đơn online thành công", hoadonNew.id_hoa_don);
+        }
+        public async Task<(bool success, string message)> CapNhatHoaDonOnline(
+            Guid idHoaDon,
+            string? IddiaChiNhanHang,
+            string? ghiChu,
+            string? idKhuyenMai,
+            string? idPhuongThucThanhToan,
+            decimal phi_van_chuyen)
+        {
+            try
+            {
+                var success = await _hoaDonRepository.ExecuteInTransactionAsync(async () =>
+                {
+                    var hoaDon = await _hoaDonRepository.GetByIdWithIncludeAsync(idHoaDon,
+                        q => q.Include(hd => hd.KhuyenMai)
+                             .Include(hd => hd.HoaDonChiTiets)
+                             .ThenInclude(hct => hct.SanPhamChiTiet)
+                             .ThenInclude(spct => spct.SanPham)
+                             .Include(hd => hd.HoaDonChiTiets)
+                             .ThenInclude(hct => hct.SanPhamChiTiet)
+                             .ThenInclude(spct => spct.MauSac)
+                             .Include(hd => hd.HoaDonChiTiets)
+                             .ThenInclude(hct => hct.SanPhamChiTiet)
+                             .ThenInclude(spct => spct.KichCo));
+
+                    if (hoaDon == null)
+                        return false;
+
+                    if (hoaDon.trang_thai_hoa_don != "ChuaThanhToan")
+                        return false;
+
+                    // Kiểm tra số lượng sản phẩm
+                    foreach (var hoaDonChiTiet in hoaDon.HoaDonChiTiets)
+                    {
+                        var sanPhamChiTiet = await _sanPhamChiTietRepository.GetByIdAsync(hoaDonChiTiet.id_san_pham_chi_tiet);
+                        if (sanPhamChiTiet == null || sanPhamChiTiet.so_luong < hoaDonChiTiet.so_luong)
+                            return false;
+                    }
+
+                    // Cập nhật địa chỉ nhận hàng
+                    if (!string.IsNullOrEmpty(IddiaChiNhanHang))
+                    {
+                        var diaChiNhanHang = await _diaChiRepository.GetFirstOrDefaultAsync(x =>
+                            x.id_dia_chi == Guid.Parse(IddiaChiNhanHang) &&
+                            x.id_khach_hang == hoaDon.id_khach_hang);
+
+                        if (diaChiNhanHang == null)
+                            return false;
+
+                        hoaDon.dia_chi_nhan_hang = $"{diaChiNhanHang.tinh}, {diaChiNhanHang.huyen}, {diaChiNhanHang.xa}, {diaChiNhanHang.dia_chi_cu_the}";
+                        hoaDon.sdt_khach_hang = diaChiNhanHang.so_dien_thoai;
+                        hoaDon.ten_khach_hang = diaChiNhanHang.ten_nguoi_nhan;
+                    }
+
+                    // Cập nhật phương thức thanh toán
+                    if (!string.IsNullOrEmpty(idPhuongThucThanhToan))
+                    {
+                        var phuongThucThanhToan = await _phuongThucThanhToanRepository.GetByIdAsync(Guid.Parse(idPhuongThucThanhToan));
+                        if (phuongThucThanhToan == null)
+                            return false;
+
+                        hoaDon.id_phuong_thuc_thanh_toan = phuongThucThanhToan.id_phuong_thuc_thanh_toan;
+                    }
+
+                    // Xử lý khuyến mãi
+                    if (!string.IsNullOrEmpty(idKhuyenMai))
+                    {
+                        var khuyenMai = await _khuyenMaiRepository.GetByIdAsync(Guid.Parse(idKhuyenMai));
+                        if (khuyenMai == null ||
+                            khuyenMai.trang_thai != "HoatDong" ||
+                            khuyenMai.thoi_gian_bat_dau > DateTime.Now ||
+                            khuyenMai.thoi_gian_ket_thuc < DateTime.Now ||
+                            khuyenMai.so_luong_da_su_dung >= khuyenMai.so_luong_toi_da ||
+                            hoaDon.tong_tien_don_hang < khuyenMai.gia_tri_don_hang_toi_thieu)
+                            return false;
+
+                        // Nếu đã có khuyến mãi cũ, giảm số lượng sử dụng
+                        if (hoaDon.KhuyenMai != null)
+                        {
+                            var khuyenMaiCu = await _khuyenMaiRepository.GetByIdAsync(hoaDon.KhuyenMai.id_khuyen_mai);
+                            if (khuyenMaiCu != null)
+                            {
+                                khuyenMaiCu.so_luong_da_su_dung = Math.Max(0, khuyenMaiCu.so_luong_da_su_dung - 1);
+                                if (!await _khuyenMaiRepository.UpdateAsync(khuyenMaiCu))
+                                    return false;
+                            }
+                        }
+
+                        // Cập nhật khuyến mãi mới
+                        hoaDon.id_khuyen_mai = khuyenMai.id_khuyen_mai;
+                        khuyenMai.so_luong_da_su_dung++;
+                        if (!await _khuyenMaiRepository.UpdateAsync(khuyenMai))
+                            return false;
+                    }
+                    else if (hoaDon.id_khuyen_mai.HasValue)
+                    {
+                        // Nếu xóa khuyến mãi, giảm số lượng sử dụng của khuyến mãi cũ
+                        var khuyenMaiCu = await _khuyenMaiRepository.GetByIdAsync(hoaDon.id_khuyen_mai.Value);
+                        if (khuyenMaiCu != null)
+                        {
+                            khuyenMaiCu.so_luong_da_su_dung = Math.Max(0, khuyenMaiCu.so_luong_da_su_dung - 1);
+                            if (!await _khuyenMaiRepository.UpdateAsync(khuyenMaiCu))
+                                return false;
+                        }
+                        hoaDon.id_khuyen_mai = null;
+                        hoaDon.so_tien_khuyen_mai = 0;
+                    }
+
+                    // Cập nhật thông tin khác
+                    hoaDon.ghi_chu = ghiChu;
+                    hoaDon.phi_van_chuyen = phi_van_chuyen;
+                    hoaDon.ngay_sua = DateTime.Now;
+
+                    // Lưu thay đổi
+                    if (!await _hoaDonRepository.UpdateAsync(hoaDon))
+                        return false;
+
+                    // Cập nhật tổng tiền và giá trị khuyến mãi
+                    var (tongTienSauKhuyenMai, giaTriKhuyenMai) = await CapNhatTongTienVaGiaTriKhuyenMai(idHoaDon);
+
+                    return true;
+                });
+
+                return success
+                    ? (true, "Cập nhật hóa đơn thành công")
+                    : (false, "Cập nhật hóa đơn thất bại");
+            }
+            catch (Exception ex)
+            {
+                // Log the error here
+                return (false, "Đã xảy ra lỗi trong quá trình xử lý");
+            }
+        }
+        public async Task<(bool success, string message)> XoaHoaDonChuaThanhToanQuaHan()
+        {
+            try
+            {
+                // Get all orders in ChuaThanhToan status
+                var hoaDonChuaThanhToan = await _hoaDonRepository.GetByConditionWithIncludeAsync(
+                    hd => hd.trang_thai_hoa_don == "ChuaThanhToan",
+                    q => q.Include(hd => hd.HoaDonChiTiets)
+                         .ThenInclude(hct => hct.SanPhamChiTiet)
+                         .Include(hd => hd.KhuyenMai));
+
+                var hoaDonQuaHan = hoaDonChuaThanhToan
+                    .Where(x => (DateTime.Now - x.ngay_tao).TotalHours >= 1)
+                    .ToList();
+
+                if (!hoaDonQuaHan.Any())
+                    return (true, "Không có hóa đơn quá hạn cần xử lý");
+
+                foreach (var hoaDon in hoaDonQuaHan)
+                {
+                    // Decrease promotion usage count if applicable
+                    if (hoaDon.KhuyenMai != null)
+                    {
+                        hoaDon.KhuyenMai.so_luong_da_su_dung = Math.Max(0, hoaDon.KhuyenMai.so_luong_da_su_dung - 1);
+                        await _khuyenMaiRepository.UpdateAsync(hoaDon.KhuyenMai);
+                    }
+
+                    // Delete order
+                    await _hoaDonRepository.DeleteAsync(hoaDon.id_hoa_don);
+                }
+
+                return (true, $"Đã xóa {hoaDonQuaHan.Count} hóa đơn quá hạn");
+            }
+            catch (Exception ex)
+            {
+                return (false, $"Lỗi khi xử lý hóa đơn quá hạn: {ex.Message}");
+            }
+        }
     }
 }

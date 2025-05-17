@@ -291,7 +291,8 @@ namespace API.Services.Implementations
                 if (sanPhamChiTiet.trang_thai != "HoatDong")
                     return (false, "Sản phẩm hiện không khả dụng");
 
-                if (sanPhamChiTiet.so_luong < gioHangChiTiet.so_luong)
+                // Only check quantity if we're trying to select the item (change status to true)
+                if (trangThai && sanPhamChiTiet.so_luong < gioHangChiTiet.so_luong)
                     return (false, $"Số lượng tồn không đủ. Hiện chỉ còn {sanPhamChiTiet.so_luong} sản phẩm");
 
                 gioHangChiTiet.trang_thai = trangThai;

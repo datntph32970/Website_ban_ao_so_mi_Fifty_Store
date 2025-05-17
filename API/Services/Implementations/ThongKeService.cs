@@ -265,7 +265,7 @@ namespace API.Services.Implementations
             {
                 if (nhanVienId != null)
                 {
-                    var nv = await _nhanVienRepository.GetByIdAsync(nhanVienId);
+                    var nv = await _nhanVienRepository.GetByIdAsync(nhanVienId.Value);
                     if (nv != null)
                     {
                         var tongTien = hoaDon.Where(hd => hd.id_nhan_vien_xu_ly == nhanVienId)
@@ -291,7 +291,7 @@ namespace API.Services.Implementations
             {
                 if (nhanVienId != null)
                 {
-                    var nv = await _nhanVienRepository.GetByIdAsync(nhanVienId);
+                    var nv = await _nhanVienRepository.GetByIdAsync(nhanVienId.Value);
                     if (nv != null)
                     {
                         var tongTien = hoaDon.Where(hd => hd.id_nhan_vien_xu_ly == nhanVienId)

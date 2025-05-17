@@ -35,6 +35,7 @@ namespace API.DbConects.DTOs.Admin.HoaDon
         public string ma_san_pham_chi_tiet { get; set; }
         public string ten_san_pham { get; set; }
         public string ten_mau_sac { get; set; }
+        public string url_anh_san_pham_chi_tiet { get; set; }
         public string ten_kich_co { get; set; }
     }
 

@@ -42,6 +42,22 @@ namespace API.Controllers.HoaDon_Controller
                 return BadRequest(ex.Message);
             }
         }
+        [HttpGet("lay-danh-sach-phuong-thuc-thanh-toan-online-hoat-dong")]
+        public async Task<IActionResult> GetPhuongThucThanhToanOnlineHoatDong()
+        {
+            try
+            {
+                var phuongThucThanhToan = await _phuongThucThanhToanService.GetAllAsync();
+                var phuongThucThanhToanHoatDong = phuongThucThanhToan
+                    .Where(x => x.trang_thai && x.ma_phuong_thuc_thanh_toan != "PTCKHOAN")
+                    .ToList();
+                return Ok(phuongThucThanhToanHoatDong);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
 
         [HttpGet("{id}")]
         [Authorize]
@@ -94,23 +110,12 @@ namespace API.Controllers.HoaDon_Controller
                 return BadRequest("Id phương thức thanh toán không hợp lệ");
             if (string.IsNullOrEmpty(suaPhuongThucThanhToanDTO.ten_phuong_thuc_thanh_toan))
                 return BadRequest("Tên phương thức thanh toán không được để trống");
-            if (string.IsNullOrEmpty(suaPhuongThucThanhToanDTO.ma_phuong_thuc_thanh_toan))
-                return BadRequest("Mã phương thức thanh toán không được để trống");
-            if (suaPhuongThucThanhToanDTO.ma_phuong_thuc_thanh_toan.Length > 10)
-                return BadRequest("Mã phương thức thanh toán không được vượt quá 10 ký tự");
             var phuongThucThanhToan = await _phuongThucThanhToanService.GetByIdAsync(id);
             if (phuongThucThanhToan == null)
                 return BadRequest("Phương thức thanh toán không tồn tại");
 
-            // Kiểm tra mã phương thức thanh toán đã tồn tại
-            var existingPTTT = (await _phuongThucThanhToanService.GetAllAsync())
-                .FirstOrDefault(x => x.ma_phuong_thuc_thanh_toan == suaPhuongThucThanhToanDTO.ma_phuong_thuc_thanh_toan
-                                && x.id_phuong_thuc_thanh_toan != id);
-            if (existingPTTT != null)
-                return BadRequest("Mã phương thức thanh toán đã tồn tại");
 
             phuongThucThanhToan.ten_phuong_thuc_thanh_toan = suaPhuongThucThanhToanDTO.ten_phuong_thuc_thanh_toan;
-            phuongThucThanhToan.ma_phuong_thuc_thanh_toan = suaPhuongThucThanhToanDTO.ma_phuong_thuc_thanh_toan;
             phuongThucThanhToan.mo_ta = suaPhuongThucThanhToanDTO.mo_ta;
             phuongThucThanhToan.id_nguoi_sua = idNhanVien.Value;
             phuongThucThanhToan.ngay_cap_nhat = DateTime.Now;
