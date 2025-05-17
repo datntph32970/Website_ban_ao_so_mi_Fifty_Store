@@ -96,7 +96,7 @@ namespace API.Controllers.TaiKhoan_Controller
         [Authorize]
         public IActionResult LayThongTinNguuoiDung()
         {
-           
+
             var token = HttpContext.Request.Headers["Authorization"].FirstOrDefault()?.Split(" ").Last();
             if (token == null || !_jwtServices.ValidateToken(token))
                 return Unauthorized("Token không hợp lệ");
@@ -105,5 +105,6 @@ namespace API.Controllers.TaiKhoan_Controller
                 return NotFound("Không tìm thấy tài khoản");
             return Ok(thongtinnguoidung);
         }
+
     }
 }

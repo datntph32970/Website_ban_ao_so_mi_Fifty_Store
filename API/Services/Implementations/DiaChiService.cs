@@ -59,6 +59,13 @@ namespace API.Services.Implementations
         {
             try
             {
+                // Kiểm tra số lượng địa chỉ hiện tại của khách hàng
+                var soLuongDiaChi = await _repository.CountAsync(d => d.id_khach_hang == idKhachHang);
+                if (soLuongDiaChi >= 5)
+                {
+                    return (false, "Bạn đã đạt giới hạn tối đa 5 địa chỉ. Vui lòng xóa bớt địa chỉ cũ trước khi thêm địa chỉ mới.");
+                }
+
                 var diaChi = new DiaChi
                 {
                     id_dia_chi = Guid.NewGuid(),
@@ -74,7 +81,12 @@ namespace API.Services.Implementations
                     ngay_sua = DateTime.Now.ToString("dd/MM/yyyy")
                 };
 
-                if (diaChi.dia_chi_mac_dinh)
+                // Nếu là địa chỉ đầu tiên, đặt làm địa chỉ mặc định
+                if (soLuongDiaChi == 0)
+                {
+                    diaChi.dia_chi_mac_dinh = true;
+                }
+                else if (diaChi.dia_chi_mac_dinh)
                 {
                     // Nếu địa chỉ mới là mặc định, cập nhật các địa chỉ khác thành không mặc định
                     var diaChiMacDinhCu = await _repository.GetFirstOrDefaultAsync(d => d.id_khach_hang == idKhachHang && d.dia_chi_mac_dinh);

@@ -45,6 +45,8 @@ namespace API.Services.Implementations
 
             if (taiKhoan == null)
                 return (false, "Tên đăng nhập hoặc mật khẩu không chính xác");
+            if (taiKhoan.trang_thai != "HoatDong")
+                return (false, "Tài khoản của bạn đã bị khóa");
 
             var token = _jwtServices.GenerateJwtToken(taiKhoan.id_tai_khoan, taiKhoan.ten_dang_nhap, taiKhoan.chuc_vu, taiKhoan.ma_tai_khoan);
             return (true, new { token });

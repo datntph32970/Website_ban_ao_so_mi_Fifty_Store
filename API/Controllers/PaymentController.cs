@@ -45,7 +45,7 @@ namespace API.Controllers
                 }
 
                 // Store the order code in note field for reference
-                hoaDon.ghi_chu = $"VNPay Payment - Order Code: {hoaDon.ma_hoa_don}";
+                hoaDon.ghi_chu = $"VNPay Payment - Order Code: {hoaDon.ma_hoa_don} {hoaDon.ghi_chu}";
                 await _hoaDonService.UpdateAsync(hoaDon);
 
                 // Extract numeric part from ma_hoa_don (remove "HD" prefix)

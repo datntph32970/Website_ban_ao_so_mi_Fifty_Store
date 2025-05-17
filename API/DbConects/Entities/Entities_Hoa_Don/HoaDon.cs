@@ -42,7 +42,7 @@ namespace API.DbConects.Entities.Entities_Hoa_Don
         [ForeignKey("PhuongThucThanhToan")]
         public Guid? id_phuong_thuc_thanh_toan { get; set; }
         [Required(ErrorMessage = "Trạng thái hóa đơn không được để trống")]
-        [RegularExpression("^(ChoTaiQuay|DangChoXuLy|DangChuanBi|DangGiaoHang|HetHang|DaThanhToan|ChuaThanhToan|DaHoanThanh|DaHuy|DaHoanTraMotPhan|DaHoanTraToanBo)$", ErrorMessage = "Trạng thái hóa đơn không hợp lệ")]
+        [RegularExpression("^(ChoTaiQuay|DangChoXuLy|DaXacNhan|DangChuanBi|DangGiaoHang|HetHang|DaThanhToan|ChuaThanhToan|DaHoanThanh|DaHuy|DaHoanTraMotPhan|DaHoanTraToanBo)$", ErrorMessage = "Trạng thái hóa đơn không hợp lệ")]
         public string trang_thai_hoa_don { get; set; }
         //
         public virtual KhachHang? KhachHang { get; set; }

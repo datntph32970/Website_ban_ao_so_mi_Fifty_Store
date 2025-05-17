@@ -219,11 +219,12 @@ namespace API.Services.Implementations
 
                 var hoaDonTaiQuayDangChoXuLy = await _hoaDonRepository.GetByConditionAsync(hd =>
                     hd.loai_hoa_don == "TaiQuay" &&
-                    hd.trang_thai_hoa_don == "ChoTaiQuay");
+                    hd.trang_thai_hoa_don == "ChoTaiQuay" &&
+                    hd.id_nhan_vien_xu_ly == id_nhan_vien_xu_ly);
 
-                if (hoaDonTaiQuayDangChoXuLy.Count >= 15)
+                if (hoaDonTaiQuayDangChoXuLy.Count >= 10)
                 {
-                    return (false, "Đã đạt giới hạn tối đa 15 hóa đơn tại quầy đang chờ xử lý");
+                    return (false, "Bạn đã đạt giới hạn tối đa 10 hóa đơn tại quầy đang chờ xử lý");
                 }
                 var hoaDon = new HoaDon
                 {

@@ -13,7 +13,7 @@ namespace API.Controllers.TaiKhoan_Controller
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,NhanVien")]
     public class NhanVienController : ControllerBase
     {
         private readonly IBaseService<NhanVien> _nhanVienService;
@@ -34,6 +34,7 @@ namespace API.Controllers.TaiKhoan_Controller
         }
 
         [HttpGet("get-all-nhan-vien")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> GetAllNhanVien()
         {
             var nhanVien = await _nhanVienService.GetAllWithIncludeAsync(
@@ -43,6 +44,8 @@ namespace API.Controllers.TaiKhoan_Controller
         }
 
         [HttpGet("get-nhan-vien-by-id")]
+        [Authorize(Roles = "Admin")]
+
         public async Task<IActionResult> GetNhanVienById(Guid id)
         {
             var nhanVien = await _nhanVienService.GetByIdWithIncludeAsync(
@@ -51,8 +54,20 @@ namespace API.Controllers.TaiKhoan_Controller
             );
             return Ok(nhanVien);
         }
-
+        [HttpGet("get-nhan-vien-dang-dang-nhap")]
+        [Authorize(Roles = "NhanVien,Admin")]
+        public async Task<IActionResult> GetNhanVienDangDangNhap()
+        {
+            var token = HttpContext.Request.Headers["Authorization"].FirstOrDefault()?.Split(" ").Last();
+            var idTaiKhoan = _jwtServices.GetUserIdFromToken(token);
+            var nhanVien = await _nhanVienService.GetByConditionWithIncludeAsync(x => x.id_tai_khoan == idTaiKhoan,
+                q => q.Include(n => n.TaiKhoanNhanVien)
+            );
+            return Ok(nhanVien);
+        }
         [HttpPost("create-nhan-vien")]
+        [Authorize(Roles = "Admin")]
+
         public async Task<IActionResult> CreateNhanVien(ThemNhanVienAdminDTO themNhanVienAdminDTO)
         {
             // Validate required fields
@@ -188,6 +203,8 @@ namespace API.Controllers.TaiKhoan_Controller
             return Ok("Tạo nhân viên thành công");
         }
         [HttpPut("update-quyen-hoac-trang-thai-nhan-vien")]
+        [Authorize(Roles = "Admin")]
+
         public async Task<IActionResult> UpdateQuyenHoacTrangThaiNhanVien(SuaTaiKhoanNhanVienDTO suaTaiKhoanNhanVienDTO)
         {
             var nhanVien = await _nhanVienService.GetByIdAsync(Guid.Parse(suaTaiKhoanNhanVienDTO.id_nhan_vien));
@@ -281,6 +298,8 @@ namespace API.Controllers.TaiKhoan_Controller
             return idKhachHang;
         }
         [HttpDelete("delete-nhan-vien")]
+        [Authorize(Roles = "Admin")]
+
         public async Task<IActionResult> DeleteNhanVien(XoaNhanVienAdminDTO xoaNhanVienAdminDTO)
         {
             // Tìm kiếm nhân viên với các bảng liên quan
@@ -366,6 +385,8 @@ namespace API.Controllers.TaiKhoan_Controller
             return Ok("Xóa nhân viên thành công.");
         }
         [HttpGet("search-nhan-vien")]
+        [Authorize(Roles = "Admin")]
+
         public async Task<IActionResult> SearchNhanVien(string keyword)
         {
             if (string.IsNullOrEmpty(keyword))
@@ -387,6 +408,78 @@ namespace API.Controllers.TaiKhoan_Controller
 
             // Trả về kết quả
             return Ok(filteredNhanViens);
+        }
+        [HttpPut("cap-nhat-thong-tin-nhan-vien")]
+        [Authorize(Roles = "NhanVien,Admin")]
+        public async Task<IActionResult> CapNhatThongTinNhanVien(CapNhatThongTinNhanVienDTO capNhatThongTinDTO)
+        {
+            try
+            {
+                // Lấy ID người dùng từ token
+                var token = HttpContext.Request.Headers["Authorization"].FirstOrDefault()?.Split(" ").Last();
+                var idTaiKhoan = _jwtServices.GetUserIdFromToken(token);
+                if (idTaiKhoan == null)
+                    return BadRequest("Không tìm thấy thông tin người dùng");
+
+                // Tìm nhân viên theo id_tai_khoan
+                var nhanViens = await _nhanVienService.GetByConditionWithIncludeAsync(x => x.id_tai_khoan == idTaiKhoan,
+                    q => q.Include(n => n.TaiKhoanNhanVien)
+                );
+                var nhanVien = nhanViens.FirstOrDefault();
+                if (nhanVien == null)
+                    return NotFound("Không tìm thấy thông tin nhân viên");
+
+                // Kiểm tra email đã tồn tại chưa (nếu email thay đổi)
+                if (nhanVien.email != capNhatThongTinDTO.email)
+                {
+                    var existingEmail = await _nhanVienService.ExistsAsync(x =>
+                        x.email == capNhatThongTinDTO.email &&
+                        x.id_nhan_vien != nhanVien.id_nhan_vien);
+                    if (existingEmail)
+                        return BadRequest("Email đã tồn tại");
+                }
+
+                // Kiểm tra số điện thoại đã tồn tại chưa (nếu số điện thoại thay đổi)
+                if (nhanVien.so_dien_thoai != capNhatThongTinDTO.so_dien_thoai)
+                {
+                    var existingPhone = await _nhanVienService.ExistsAsync(x =>
+                        x.so_dien_thoai == capNhatThongTinDTO.so_dien_thoai &&
+                        x.id_nhan_vien != nhanVien.id_nhan_vien);
+                    if (existingPhone)
+                        return BadRequest("Số điện thoại đã tồn tại");
+                }
+
+                // Kiểm tra CCCD đã tồn tại chưa (nếu CCCD thay đổi)
+                if (nhanVien.cccd != capNhatThongTinDTO.cccd)
+                {
+                    var existingCCCD = await _nhanVienService.ExistsAsync(x =>
+                        x.cccd == capNhatThongTinDTO.cccd &&
+                        x.id_nhan_vien != nhanVien.id_nhan_vien);
+                    if (existingCCCD)
+                        return BadRequest("CCCD đã tồn tại");
+                }
+
+                // Cập nhật thông tin nhân viên
+                nhanVien.ten_nhan_vien = capNhatThongTinDTO.ho_ten;
+                nhanVien.so_dien_thoai = capNhatThongTinDTO.so_dien_thoai;
+                nhanVien.email = capNhatThongTinDTO.email;
+                nhanVien.gioi_tinh = capNhatThongTinDTO.gioi_tinh;
+                nhanVien.cccd = capNhatThongTinDTO.cccd;
+                nhanVien.dia_chi = capNhatThongTinDTO.dia_chi;
+                nhanVien.ngay_sinh = capNhatThongTinDTO.ngay_sinh;
+                nhanVien.ngay_sua = DateTime.Now;
+
+                // Lưu thay đổi
+                var result = await _nhanVienService.UpdateAsync(nhanVien);
+                if (!result)
+                    return BadRequest("Lỗi khi cập nhật thông tin nhân viên");
+
+                return Ok("Cập nhật thông tin nhân viên thành công");
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Lỗi server: {ex.Message}");
+            }
         }
     }
 }

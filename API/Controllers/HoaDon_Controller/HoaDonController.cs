@@ -1128,8 +1128,8 @@ namespace API.Controllers.HoaDon_Controller
                 if (hoaDon.id_khach_hang != idKhachHang)
                     return Unauthorized("Bạn không có quyền hủy đơn hàng này");
 
-                if (hoaDon.trang_thai_hoa_don != "ChuaThanhToan")
-                    return BadRequest("Chỉ có thể hủy đơn hàng ở trạng thái chưa thanh toán");
+                if (hoaDon.trang_thai_hoa_don != "ChuaThanhToan" && hoaDon.trang_thai_hoa_don != "DangChoXuLy")
+                    return BadRequest("Chỉ có thể hủy đơn hàng ở trạng thái chưa thanh toán hoặc đang chờ xử lý");
 
                 // Execute cancellation in a transaction
                 var success = await _hoaDonService.ExecuteInTransactionAsync(async () =>
