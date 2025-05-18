@@ -1635,16 +1635,19 @@ namespace API.Services.Implementations
                     hoaDon.ngay_sua = DateTime.Now;
                     hoaDon.ly_do_huy_don_hang = lyDo;
                     hoaDon.id_nhan_vien_xu_ly = id_nhan_vien_xu_ly;
+            
+                        // Cập nhật trạng thái các chi tiết đơn hàng
+                        foreach (var chiTiet in hoaDon.HoaDonChiTiets)
+                        {
+                            chiTiet.trang_thai = "DaHuy";
+                            chiTiet.ngay_sua = DateTime.Now;
+                            chiTiet.id_nhan_vien_xu_ly = id_nhan_vien_xu_ly;
 
-                    // Cập nhật trạng thái các chi tiết đơn hàng
-                    foreach (var chiTiet in hoaDon.HoaDonChiTiets)
-                    {
-                        chiTiet.trang_thai = "DaHuy";
-                        chiTiet.ngay_sua = DateTime.Now;
-
-                        var updateChiTietResult = await _hoaDonChiTietRepository.UpdateAsync(chiTiet);
-                        if (!updateChiTietResult) return false;
-                    }
+                            var updateChiTietResult = await _hoaDonChiTietRepository.UpdateAsync(chiTiet);
+                            if (!updateChiTietResult) return false;
+                        }
+                
+                    
 
                     // Giảm số lượng sử dụng khuyến mãi nếu có
                     if (hoaDon.id_khuyen_mai.HasValue && hoaDon.KhuyenMai != null)

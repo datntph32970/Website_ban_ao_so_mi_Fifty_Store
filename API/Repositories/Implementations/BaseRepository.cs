@@ -61,10 +61,12 @@ namespace API.Repositories.Implementations
                 _dbSet.Update(entity);
                 return await _context.SaveChangesAsync() > 0;
             }
-            catch
+            catch (Exception e)
             {
+                Console.WriteLine(e);
                 return false;
             }
+           
         }
 
         public virtual async Task<bool> DeleteAsync(Guid id)

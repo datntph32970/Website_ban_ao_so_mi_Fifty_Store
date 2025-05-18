@@ -1247,7 +1247,7 @@ namespace API.Controllers.HoaDon_Controller
                     return Unauthorized("Bạn không có quyền hủy đơn hàng này");
 
                 // Khách hàng hủy đơn hàng (isKhachHangHuy = true)
-                var (success, message) = await _hoaDonService.HuyDonHangAsync(id_hoa_don, request.ly_do, true, id_khach_hang.Value);
+                var (success, message) = await _hoaDonService.HuyDonHangAsync(id_hoa_don, request.ly_do, true);
                 if (!success)
                     return BadRequest(message);
 
