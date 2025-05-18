@@ -36,6 +36,9 @@ namespace API.Services.Implementations
                 await RemoveInvalidDiscountsAsync();
                 var result = await _repository.GetAllWithIncludeAsync(q => q.Include(s => s.DanhMuc)
                                                                .Include(s => s.ThuongHieu)
+                                                               .Include(s => s.KieuDang)
+                                                               .Include(s => s.ChatLieu)
+                                                               .Include(s => s.XuatXu)
                                                                .Include(s => s.anhMacDinh)
                                                                .Include(s => s.SanPhamChiTiets)
                                                                .ThenInclude(spct => spct.GiamGia));
