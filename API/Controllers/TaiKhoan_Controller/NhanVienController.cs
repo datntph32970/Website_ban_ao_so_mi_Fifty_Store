@@ -214,6 +214,10 @@ namespace API.Controllers.TaiKhoan_Controller
             if (taikhoan == null)
                 return NotFound("Không tìm thấy tài khoản");
 
+            // Không cho phép cập nhật tài khoản có mã TK00000001
+            if (taikhoan.ma_tai_khoan == "TK00000001")
+                return BadRequest("Tài khoản này là cố định không được cập nhật");
+
             // Update Chức vụ if provided
             if (!string.IsNullOrEmpty(suaTaiKhoanNhanVienDTO.chuc_vu))
             {
