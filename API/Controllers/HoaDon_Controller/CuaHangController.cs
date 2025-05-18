@@ -11,7 +11,6 @@ namespace API.Controllers.HoaDon_Controller
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize]
     public class CuaHangController : ControllerBase
     {
         private readonly ICuaHangService _cuaHangService;
@@ -33,7 +32,7 @@ namespace API.Controllers.HoaDon_Controller
             string? hinhAnhUrl = null;
             if (cuaHang.id_hinh_anh != null)
             {
-            var hinhAnh = await _hinhAnhServices.GetByIdAsync(cuaHang.id_hinh_anh.Value);
+                var hinhAnh = await _hinhAnhServices.GetByIdAsync(cuaHang.id_hinh_anh.Value);
                 hinhAnhUrl = hinhAnh?.url;
             }
 

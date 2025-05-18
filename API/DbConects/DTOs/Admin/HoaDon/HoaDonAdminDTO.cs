@@ -13,6 +13,7 @@ namespace API.DbConects.DTOs.Admin.HoaDon
         public string? id_phuong_thuc_thanh_toan { get; set; }
         public string? dia_chi_nhan_hang { get; set; }
         public string? ghi_chu { get; set; }
+        public string? ly_do_huy_don_hang { get; set; }
         public decimal? so_tien_khach_tra { get; set; }
         public decimal? so_tien_thua_tra_khach { get; set; }
         public string loai_hoa_don { get; set; }

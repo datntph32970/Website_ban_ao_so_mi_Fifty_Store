@@ -134,6 +134,7 @@ namespace API.Controllers
                             }
 
                             chiTiet.trang_thai = "DangChoXuLy";
+                            chiTiet.ngay_sua = DateTime.Now;
                             await _hoaDonChiTietService.UpdateAsync(chiTiet);
                         }
                     }

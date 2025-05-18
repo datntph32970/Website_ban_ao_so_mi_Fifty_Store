@@ -38,7 +38,7 @@ namespace API.Migrations
                     id_tai_khoan = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
                     ma_khach_hang = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     ten_khach_hang = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
-                    ngay_sinh = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    ngay_sinh = table.Column<DateOnly>(type: "date", nullable: true),
                     so_dien_thoai = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     email = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     gioi_tinh = table.Column<string>(type: "nvarchar(max)", nullable: true),
@@ -101,6 +101,9 @@ namespace API.Migrations
                     tinh = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     huyen = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     xa = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    dia_chi_cu_the = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    so_dien_thoai = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    ten_nguoi_nhan = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     dia_chi_mac_dinh = table.Column<bool>(type: "bit", nullable: false),
                     ngay_tao = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     ngay_sua = table.Column<string>(type: "nvarchar(max)", nullable: false)
@@ -583,16 +586,18 @@ namespace API.Migrations
                     tong_tien_don_hang = table.Column<decimal>(type: "decimal(18,2)", nullable: true),
                     so_tien_khuyen_mai = table.Column<decimal>(type: "decimal(18,2)", nullable: true),
                     ghi_chu = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    ly_do_huy_don_hang = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     tong_tien_phai_thanh_toan = table.Column<decimal>(type: "decimal(18,2)", nullable: true),
                     so_tien_khach_tra = table.Column<decimal>(type: "decimal(18,2)", nullable: true),
                     so_tien_thua_tra_khach = table.Column<decimal>(type: "decimal(18,2)", nullable: true),
                     ten_khach_hang = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     ten_nhan_vien = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     sdt_khach_hang = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    phi_van_chuyen = table.Column<decimal>(type: "decimal(18,2)", nullable: true),
                     dia_chi_nhan_hang = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     loai_hoa_don = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     id_khach_hang = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
-                    id_nhan_vien_xu_ly = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    id_nhan_vien_xu_ly = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
                     id_cua_hang = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
                     id_khuyen_mai = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
                     id_phuong_thuc_thanh_toan = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
@@ -706,7 +711,7 @@ namespace API.Migrations
                         column: x => x.id_khach_hang,
                         principalTable: "KhachHangs",
                         principalColumn: "id_khach_hang",
-                        onDelete: ReferentialAction.Cascade);
+                        onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "FK_GioHangChiTiets_SanPhamChiTiets_id_san_pham_chi_tiet",
                         column: x => x.id_san_pham_chi_tiet,
@@ -804,15 +809,15 @@ namespace API.Migrations
             migrationBuilder.InsertData(
                 table: "CuaHangs",
                 columns: new[] { "id_cua_hang", "dia_chi", "email", "id_hinh_anh", "id_nguoi_sua", "mo_ta", "sdt", "ten_cua_hang", "website" },
-                values: new object[] { new Guid("00000000-0000-1234-5678-901234567890"), "Hà Nội", "shirtstore@gmail.com", null, new Guid("00000000-0000-0000-0000-000000000001"), "Cửa hàng thời trang nam", "0123456789", "Shirt Store", "https://www.shirtstore.com" });
+                values: new object[] { new Guid("00000000-0000-1234-5678-901234567890"), "Hà Nội", "fiftystore@gmail.com", null, new Guid("00000000-0000-0000-0000-000000000001"), "Cửa hàng áo sơ mi thời trang nam", "0123456789", "FIFTY STORE", "https://www.shirtstore.com" });
 
             migrationBuilder.InsertData(
                 table: "PhuongThucThanhToans",
                 columns: new[] { "id_phuong_thuc_thanh_toan", "id_nguoi_sua", "id_nguoi_tao", "ma_phuong_thuc_thanh_toan", "mo_ta", "ngay_cap_nhat", "ngay_tao", "ten_phuong_thuc_thanh_toan", "trang_thai" },
                 values: new object[,]
                 {
-                    { new Guid("12345678-9012-3456-7890-123456789012"), null, new Guid("00000000-0000-0000-0000-000000000001"), "PTTIENMAT", "Phương thức thanh toán tiền mặt", null, new DateTime(2025, 4, 21, 0, 0, 0, 0, DateTimeKind.Unspecified), "Tiền mặt", true },
-                    { new Guid("12345678-9012-3456-7890-123456789013"), null, new Guid("00000000-0000-0000-0000-000000000001"), "PTCKHOAN", "Phương thức thanh toán chuyển khoản", null, new DateTime(2025, 4, 21, 0, 0, 0, 0, DateTimeKind.Unspecified), "Chuyển khoản", true }
+                    { new Guid("12345678-9012-3456-4213-123456781321"), null, new Guid("00000000-0000-0000-0000-000000000001"), "PTVNPAY", "Phương thức thanh toán VNPay", null, new DateTime(2025, 4, 21, 0, 0, 0, 0, DateTimeKind.Unspecified), "VNPAY", true },
+                    { new Guid("12345678-9012-3456-7890-123456789012"), null, new Guid("00000000-0000-0000-0000-000000000001"), "PTTIENMAT", "Phương thức thanh toán tiền mặt", null, new DateTime(2025, 4, 21, 0, 0, 0, 0, DateTimeKind.Unspecified), "Tiền mặt", true }
                 });
 
             migrationBuilder.CreateIndex(

@@ -113,12 +113,12 @@ namespace API.DbConects
                 new CuaHang
                 {
                     id_cua_hang = idCuaHang,
-                    ten_cua_hang = "Shirt Store",
+                    ten_cua_hang = "FIFTY STORE",
                     website = "https://www.shirtstore.com",
-                    email = "shirtstore@gmail.com",
+                    email = "fiftystore@gmail.com",
                     sdt = "0123456789",
                     dia_chi = "Hà Nội",
-                    mo_ta = "Cửa hàng thời trang nam",
+                    mo_ta = "Cửa hàng áo sơ mi thời trang nam",
                     id_hinh_anh = null,
                     id_nguoi_sua = new Guid("00000000-0000-0000-0000-000000000001")
                 }
@@ -138,7 +138,7 @@ namespace API.DbConects
                 {
                     id_phuong_thuc_thanh_toan = new Guid("12345678-9012-3456-4213-123456781321"),
                     ten_phuong_thuc_thanh_toan = "VNPAY",
-                    ma_phuong_thuc_thanh_toan = "VNPAY",
+                    ma_phuong_thuc_thanh_toan = "PTVNPAY",
                     mo_ta = "Phương thức thanh toán VNPay",
                     trang_thai = true,
                     ngay_tao = DateTime.Parse("2025-04-21"),

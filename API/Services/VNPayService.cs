@@ -5,6 +5,8 @@ using System.Globalization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using API.DbConects.Entities;
+using System.Text.Json;
+using System.Net.Http.Headers;
 
 namespace API.Services
 {
@@ -111,6 +113,185 @@ namespace API.Services
 
             return ipAddress;
         }
+
+        public class RefundResult
+        {
+            public bool Success { get; set; }
+            public string Message { get; set; }
+            public string TransactionId { get; set; }
+        }
+        // Thêm phương thức này vào VNPayService
+        public async Task<RefundResult> RefundPayment(string transactionId, long amount, string description)
+        {
+            try
+            {
+                // Log thông tin giao dịch hoàn tiền để debug
+                Console.WriteLine($"Bắt đầu yêu cầu hoàn tiền: {transactionId}, Số tiền: {amount}, Mô tả: {description}");
+
+                // Tạo tham số hoàn tiền
+                var vnpHashSecret = _vnPayConfig.HashSecret;
+                var vnpTmnCode = _vnPayConfig.TmnCode;
+                var vnpApiUrl = _vnPayConfig.ApiUrl;
+                var vnpVersion = _vnPayConfig.Version;
+
+                var vnpRequestId = DateTime.Now.Ticks.ToString();
+
+                // Sử dụng ngày hiện tại, không dùng UTC để tránh lỗi
+                DateTime now = DateTime.Now;
+                var vnpCreateDate = now.ToString("yyyyMMddHHmmss");
+
+                // Sử dụng ngày giao dịch gốc hoặc lấy từ transactionId nếu có thể
+                // Nếu không, sử dụng ngày hiện tại cho vnp_TransDate
+                var vnpTransDate = now.ToString("yyyyMMddHHmmss");
+
+                var vnpIpAddr = GetIpAddress();
+
+                // Tạo dữ liệu gửi sang VNPay
+                var data = new Dictionary<string, string>
+                {
+                    ["vnp_RequestId"] = vnpRequestId,
+                    ["vnp_Version"] = vnpVersion,
+                    ["vnp_Command"] = "refund",
+                    ["vnp_TmnCode"] = vnpTmnCode,
+                    ["vnp_TransactionType"] = "02", // Hoàn toàn phần
+                    ["vnp_TxnRef"] = transactionId,
+                    ["vnp_Amount"] = (amount * 100).ToString(), // Số tiền * 100 (VNPay tính theo đơn vị xu)
+                    ["vnp_OrderInfo"] = description,
+                    ["vnp_TransDate"] = vnpTransDate,
+                    ["vnp_CreateDate"] = vnpCreateDate,
+                    ["vnp_IpAddr"] = vnpIpAddr,
+                    ["vnp_CreateBy"] = "System"
+                };
+
+                // Tạo chuỗi checksum - chỉ sử dụng các tham số không rỗng
+                var signData = string.Join("&", data
+                    .Where(kv => !string.IsNullOrEmpty(kv.Value))
+                    .OrderBy(kv => kv.Key)
+                    .Select(kv => $"{kv.Key}={WebUtility.UrlEncode(kv.Value)}"));
+
+                var checksum = HmacSHA512(vnpHashSecret, signData);
+                data["vnp_SecureHash"] = checksum;
+
+                // Log dữ liệu gửi đi để debug
+                Console.WriteLine($"API URL: {vnpApiUrl}");
+                Console.WriteLine($"Dữ liệu gửi: {JsonSerializer.Serialize(data)}");
+
+                // Gọi API VNPay
+                using (var client = new HttpClient())
+                {
+                    // Thiết lập timeout dài hơn
+                    client.Timeout = TimeSpan.FromSeconds(30);
+                    client.BaseAddress = new Uri(vnpApiUrl);
+                    client.DefaultRequestHeaders.Accept.Clear();
+                    client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+                    // Tạo content với form data
+                    var content = new FormUrlEncodedContent(data);
+
+                    try
+                    {
+                        var response = await client.PostAsync("", content);
+
+                        // Log response status
+                        Console.WriteLine($"Status code: {response.StatusCode}");
+
+                        var responseContent = await response.Content.ReadAsStringAsync();
+                        Console.WriteLine($"Response content: {responseContent}");
+
+                        if (response.IsSuccessStatusCode)
+                        {
+                            try
+                            {
+                                var options = new JsonSerializerOptions
+                                {
+                                    PropertyNameCaseInsensitive = true
+                                };
+
+                                var responseData = JsonSerializer.Deserialize<Dictionary<string, string>>(responseContent, options);
+
+                                // Kiểm tra kết quả từ VNPay
+                                if (responseData != null && responseData.TryGetValue("vnp_ResponseCode", out var responseCode) && responseCode == "00")
+                                {
+                                    return new RefundResult
+                                    {
+                                        Success = true,
+                                        Message = "Hoàn tiền thành công",
+                                        TransactionId = responseData.TryGetValue("vnp_TransactionNo", out var transNo) ? transNo : transactionId
+                                    };
+                                }
+                                else
+                                {
+                                    string errorMsg = "Unknown error";
+                                    if (responseData != null)
+                                    {
+                                        if (responseData.TryGetValue("vnp_Message", out var message))
+                                            errorMsg = message;
+                                        else if (responseData.TryGetValue("vnp_ResponseCode", out var code))
+                                            errorMsg = $"Mã lỗi: {code}";
+                                    }
+
+                                    return new RefundResult
+                                    {
+                                        Success = false,
+                                        Message = $"Lỗi từ VNPay: {errorMsg}",
+                                        TransactionId = transactionId
+                                    };
+                                }
+                            }
+                            catch (JsonException jsonEx)
+                            {
+                                Console.WriteLine($"Lỗi parse JSON: {jsonEx.Message}");
+                                return new RefundResult
+                                {
+                                    Success = false,
+                                    Message = $"Lỗi khi xử lý dữ liệu phản hồi: {jsonEx.Message}",
+                                    TransactionId = transactionId
+                                };
+                            }
+                        }
+                        else
+                        {
+                            // Đối với Sandbox, đôi khi có thể trả về 500 nhưng vẫn hoạt động
+                            // Trả về thất bại nhưng không phải lỗi hệ thống
+                            return new RefundResult
+                            {
+                                Success = false,
+                                Message = $"VNPay từ chối yêu cầu hoàn tiền: {response.StatusCode} - {response.ReasonPhrase}. " +
+                                         "Lưu ý: Môi trường sandbox có thể không hỗ trợ đầy đủ API hoàn tiền.",
+                                TransactionId = transactionId
+                            };
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine($"Lỗi khi gọi API: {e.Message}");
+                        if (e.InnerException != null)
+                        {
+                            Console.WriteLine($"Inner Exception: {e.InnerException.Message}");
+                        }
+
+                        return new RefundResult
+                        {
+                            Success = false,
+                            Message = $"Lỗi kết nối đến VNPay: {e.Message}",
+                            TransactionId = transactionId
+                        };
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Exception trong RefundPayment: {ex}");
+                return new RefundResult
+                {
+                    Success = false,
+                    Message = $"Lỗi hệ thống: {ex.Message}",
+                    TransactionId = transactionId
+                };
+            }
+        }
+
+
     }
 
     public class VNPayLibrary

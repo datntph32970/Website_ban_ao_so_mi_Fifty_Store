@@ -12,8 +12,23 @@ using Microsoft.VisualBasic;
 
 namespace API.Services.Implementations
 {
+    public enum TrangThaiDonHang
+    {
+        ChuaThanhToan,
+        DaThanhToan,
+        DangChoXuLy,
+        DaXacNhan,
+        DangChuanBi,
+        DangGiaoHang,
+        DaHoanThanh,
+        DaHuy,
+        HetHang,
+        ChoTaiQuay
+    }
+
     public class HoaDonService : BaseService<HoaDon>, IHoaDonService
     {
+        private readonly IEmailService _emailService;
         private readonly IBaseRepository<HoaDon> _hoaDonRepository;
         private readonly IBaseRepository<HoaDonChiTiet> _hoaDonChiTietRepository;
         private readonly IBaseRepository<SanPhamChiTiet> _sanPhamChiTietRepository;
@@ -28,6 +43,50 @@ namespace API.Services.Implementations
         private readonly IBaseRepository<GioHangChiTiet> _gioHangChiTietRepository;
         private readonly VNPayService _vnPayService;
 
+        // Helper methods for status validation
+        private bool IsValidStatusTransition(string currentStatus, string newStatus)
+        {
+            var validTransitions = new Dictionary<string, string[]>
+            {
+                ["ChuaThanhToan"] = new[] { "DaHuy", "DaThanhToan" },
+                ["DaThanhToan"] = new[] { "DangChoXuLy", "DaHuy" },
+                ["DangChoXuLy"] = new[] { "DaXacNhan", "HetHang", "DaHuy" },
+                ["DaXacNhan"] = new[] { "DangChuanBi" },
+                ["DangChuanBi"] = new[] { "DangGiaoHang" },
+                ["DangGiaoHang"] = new[] { "DaHoanThanh", "DaHuy" }
+            };
+
+            return validTransitions.ContainsKey(currentStatus) &&
+                   validTransitions[currentStatus].Contains(newStatus);
+        }
+
+        private async Task<bool> ValidateNhanVienXuLy(Guid id_nhan_vien_xu_ly)
+        {
+            if (id_nhan_vien_xu_ly == Guid.Empty)
+                return false;
+
+            var nhanVien = await _nhanVienRepository.GetByIdAsync(id_nhan_vien_xu_ly);
+            return nhanVien != null;
+        }
+
+        private async Task<bool> RetryOperation(Func<Task<bool>> operation, int maxRetries = 3)
+        {
+            for (int i = 0; i < maxRetries; i++)
+            {
+                try
+                {
+                    return await operation();
+                }
+                catch (Exception ex)
+                {
+                    if (i == maxRetries - 1) throw;
+                    await Task.Delay(1000 * (i + 1)); // Exponential backoff
+                    Console.WriteLine($"Retry {i + 1}: {ex.Message}");
+                }
+            }
+            return false;
+        }
+
         public HoaDonService(
             IBaseRepository<HoaDon> hoaDonRepository,
             IBaseRepository<HoaDonChiTiet> hoaDonChiTietRepository,
@@ -41,7 +100,8 @@ namespace API.Services.Implementations
             IBaseRepository<CuaHang> cuaHangRepository,
             IBaseRepository<GioHangChiTiet> gioHangChiTietRepository,
             IBaseRepository<DiaChi> diaChiRepository,
-            VNPayService vnPayService) : base(hoaDonRepository)
+            VNPayService vnPayService,
+            IEmailService emailService) : base(hoaDonRepository)
         {
             _hoaDonRepository = hoaDonRepository;
             _hoaDonChiTietRepository = hoaDonChiTietRepository;
@@ -56,6 +116,7 @@ namespace API.Services.Implementations
             _vnPayService = vnPayService;
             _phuongThucThanhToanRepository = phuongThucThanhToanRepository;
             _diaChiRepository = diaChiRepository;
+            _emailService = emailService;
         }
 
         public async Task<List<HoaDonAdminDTO>> GetAllHoaDonAdminDTOAsync()
@@ -155,6 +216,7 @@ namespace API.Services.Implementations
                 sdt_khach_hang = result.id_khach_hang != null ? result.KhachHang.so_dien_thoai : null,
                 dia_chi_nhan_hang = result.id_khach_hang != null ? result.dia_chi_nhan_hang : null,
                 ghi_chu = result.ghi_chu,
+                ly_do_huy_don_hang = result.ly_do_huy_don_hang,
                 loai_hoa_don = result.loai_hoa_don,
                 so_tien_khach_tra = result.so_tien_khach_tra,
                 phi_van_chuyen = result.phi_van_chuyen,
@@ -791,82 +853,6 @@ namespace API.Services.Implementations
                 return (false, "Cập nhật trạng thái hóa đơn thất bại");
             return (true, "Thanh toán hóa đơn thành công");
         }
-        public async Task<(bool success, string message, Guid id_hoa_don)> TaoHoaDonOnlineTrangThaiChuaThanhToan(Guid id_khach_hang, decimal phi_van_chuyen)
-        {
-
-
-            var khachHang = await _khachHangRepository.GetByIdWithIncludeAsync(id_khach_hang, q => q.Include(x => x.DiaChis));
-            if (khachHang == null)
-                return (false, "Khách hàng không tồn tại", Guid.Empty);
-            if (khachHang.DiaChis.Count == 0)
-                return (false, "Khách hàng không có địa chỉ nhận hàng", Guid.Empty);
-            var diaChi = khachHang.DiaChis.Where(x => x.dia_chi_mac_dinh == true).FirstOrDefault();
-            if (diaChi == null)
-                return (false, "Khách hàng không có địa chỉ nhận hàng", Guid.Empty);
-
-            var cuaHang = await _cuaHangRepository.GetFirstOrDefaultAsync(x => x.id_cua_hang != Guid.Empty);
-            var phuongThucThanhToan = await _phuongThucThanhToanRepository.GetFirstOrDefaultAsync(x => x.ten_phuong_thuc_thanh_toan == "Tiền mặt");
-            if (phuongThucThanhToan == null)
-                return (false, "Phương thức thanh toán tiền mặt không tồn tại", Guid.Empty);
-            var hoadonNew = new HoaDon
-            {
-                id_hoa_don = Guid.NewGuid(),
-                ma_hoa_don = await TaoMaHoaDon(),
-                id_khach_hang = id_khach_hang,
-                trang_thai_hoa_don = "ChuaThanhToan",
-                loai_hoa_don = "Online",
-                ngay_tao = DateTime.Now,
-                phi_van_chuyen = phi_van_chuyen,
-                id_phuong_thuc_thanh_toan = phuongThucThanhToan.id_phuong_thuc_thanh_toan
-            };
-            await _hoaDonRepository.CreateAsync(hoadonNew);
-
-            var gioHangItems = await _gioHangChiTietRepository.GetByConditionWithIncludeAsync(x => x.id_khach_hang == id_khach_hang, q => q.Include(x => x.SanPhamChiTiet).ThenInclude(x => x.SanPham).Include(x => x.SanPhamChiTiet).ThenInclude(x => x.MauSac).Include(x => x.SanPhamChiTiet).ThenInclude(x => x.KichCo));
-
-            decimal tongTienDonHang = 0;
-            foreach (var item in gioHangItems)
-            {
-                if (item.so_luong > item.SanPhamChiTiet.so_luong)
-                {
-                    return (false, $"Số lượng sản phẩm {item.SanPhamChiTiet.SanPham.ten_san_pham} - {item.SanPhamChiTiet.MauSac.ten_mau_sac} - {item.SanPhamChiTiet.KichCo.ten_kich_co} không đủ {item.so_luong} sản phẩm", Guid.Empty);
-                }
-                var hoaDonChiTiet = new HoaDonChiTiet
-                {
-                    id_hoa_don_chi_tiet = Guid.NewGuid(),
-                    id_hoa_don = hoadonNew.id_hoa_don,
-                    ma_hoa_don_chi_tiet = await TaoMaHoaDonChiTiet(hoadonNew.id_hoa_don),
-                    id_san_pham_chi_tiet = item.id_san_pham_chi_tiet,
-                    ten_san_pham = item.SanPhamChiTiet.SanPham.ten_san_pham,
-                    ten_mau_sac = item.SanPhamChiTiet.MauSac.ten_mau_sac,
-                    ten_kich_co = item.SanPhamChiTiet.KichCo.ten_kich_co,
-                    so_luong = item.so_luong,
-
-                    don_gia = item.SanPhamChiTiet.gia_ban,
-                    gia_sau_giam_gia = await TinhTongTienSauGiamGiaSanPham(item.id_san_pham_chi_tiet),
-                    gia_tri_khuyen_mai_cua_hoa_don_cho_hdct = 0,
-                    trang_thai = "ChuaThanhToan",
-                    ghi_chu = null,
-                };
-                hoaDonChiTiet.thanh_tien = hoaDonChiTiet.gia_sau_giam_gia * hoaDonChiTiet.so_luong;
-                tongTienDonHang += hoaDonChiTiet.thanh_tien;
-                await _hoaDonChiTietRepository.CreateAsync(hoaDonChiTiet);
-
-
-                var gioHangChiTiet = await _gioHangChiTietRepository.GetByIdAsync(item.id_gio_hang_chi_tiet);
-                if (gioHangChiTiet != null)
-                {
-                    await _gioHangChiTietRepository.DeleteAsync(gioHangChiTiet.id_gio_hang_chi_tiet);
-                }
-            }
-            hoadonNew.tong_tien_don_hang = tongTienDonHang;
-            hoadonNew.tong_tien_phai_thanh_toan = tongTienDonHang + phi_van_chuyen;
-            hoadonNew.ten_khach_hang = khachHang.ten_khach_hang;
-            hoadonNew.sdt_khach_hang = khachHang.so_dien_thoai;
-            hoadonNew.dia_chi_nhan_hang = diaChi.tinh + ", " + diaChi.huyen + ", " + diaChi.xa + ", " + diaChi.dia_chi_cu_the;
-            hoadonNew.id_cua_hang = cuaHang.id_cua_hang == null ? Guid.Empty : cuaHang.id_cua_hang;
-            await _hoaDonRepository.UpdateAsync(hoadonNew);
-            return (true, "Tạo hóa đơn online thành công", hoadonNew.id_hoa_don);
-        }
         public async Task<(bool success, string message)> CapNhatHoaDonOnline(
             Guid idHoaDon,
             string? IddiaChiNhanHang,
@@ -1036,6 +1022,741 @@ namespace API.Services.Implementations
             {
                 return (false, $"Lỗi khi xử lý hóa đơn quá hạn: {ex.Message}");
             }
+        }
+        public async Task<(bool success, string message)> XacNhanDonHangAsync(Guid idHoaDon, Guid id_nhan_vien_xu_ly)
+        {
+            try
+            {
+                // Lấy thông tin đơn hàng kèm theo chi tiết và thông tin khách hàng
+                var hoaDon = await _hoaDonRepository.GetByIdWithIncludeAsync(idHoaDon,
+                    q => q.Include(hd => hd.HoaDonChiTiets)
+                          .ThenInclude(hct => hct.SanPhamChiTiet)
+                          .Include(hd => hd.KhachHang));
+
+                if (hoaDon == null)
+                    return (false, "Không tìm thấy đơn hàng");
+
+                // Kiểm tra trạng thái hiện tại
+                if (hoaDon.trang_thai_hoa_don != "DangChoXuLy")
+                    return (false, "Đơn hàng không ở trạng thái chờ xử lý");
+
+                // Kiểm tra số lượng tồn kho
+                foreach (var chiTiet in hoaDon.HoaDonChiTiets)
+                {
+                    if (chiTiet.SanPhamChiTiet.so_luong < chiTiet.so_luong)
+                    {
+                        return (false, $"Sản phẩm {chiTiet.ten_san_pham} - {chiTiet.ten_mau_sac} - {chiTiet.ten_kich_co} không đủ số lượng trong kho");
+                    }
+                }
+
+                // Thực hiện trong transaction để đảm bảo tính nhất quán
+                var success = await _hoaDonRepository.ExecuteInTransactionAsync(async () =>
+                {
+                    // Cập nhật trạng thái đơn hàng
+                    hoaDon.trang_thai_hoa_don = "DaXacNhan";
+                    hoaDon.ngay_sua = DateTime.Now;
+                    hoaDon.id_nhan_vien_xu_ly = id_nhan_vien_xu_ly;
+
+                    // Cập nhật trạng thái các chi tiết đơn hàng
+                    foreach (var chiTiet in hoaDon.HoaDonChiTiets)
+                    {
+                        chiTiet.trang_thai = "DaXacNhan";
+                        chiTiet.id_nhan_vien_xu_ly = id_nhan_vien_xu_ly;
+                        var updateResult = await _hoaDonChiTietRepository.UpdateAsync(chiTiet);
+                        if (!updateResult) return false;
+
+                        // Trừ số lượng tồn kho
+                        chiTiet.SanPhamChiTiet.so_luong -= chiTiet.so_luong;
+                        var updateSanPhamResult = await _sanPhamChiTietRepository.UpdateAsync(chiTiet.SanPhamChiTiet);
+                        if (!updateSanPhamResult) return false;
+                    }
+
+                    // Cập nhật đơn hàng
+                    var updateHoaDonResult = await _hoaDonRepository.UpdateAsync(hoaDon);
+                    if (!updateHoaDonResult) return false;
+
+                    // Gửi email thông báo cho khách hàng
+                    if (!string.IsNullOrEmpty(hoaDon.KhachHang.email))
+                    {
+                        await GuiEmailCapNhatTrangThaiAsync(idHoaDon, "DaXacNhan");
+                    }
+
+                    return true;
+                });
+
+                return success
+                    ? (true, "Xác nhận đơn hàng thành công")
+                    : (false, "Không thể xác nhận đơn hàng. Vui lòng thử lại sau");
+            }
+            catch (Exception ex)
+            {
+                // Log lỗi ở đây
+                return (false, $"Đã xảy ra lỗi khi xác nhận đơn hàng: {ex.Message}");
+            }
+        }
+        public async Task<(bool success, string message)> GuiEmailCapNhatTrangThaiAsync(Guid idHoaDon, string trangThai)
+        {
+            try
+            {
+                var inforCuaHang = await _cuaHangRepository.GetFirstOrDefaultAsync(x => x.id_cua_hang != Guid.Empty);
+                var hoaDon = await _hoaDonRepository.GetByIdWithIncludeAsync(idHoaDon,
+                    q => q.Include(hd => hd.KhachHang)
+                          .Include(hd => hd.HoaDonChiTiets)
+                          .ThenInclude(hct => hct.SanPhamChiTiet)
+                          .Include(hd => hd.PhuongThucThanhToan));
+
+                if (hoaDon == null || hoaDon.KhachHang == null || string.IsNullOrEmpty(hoaDon.KhachHang.email))
+                    return (false, "Không thể gửi email: Không tìm thấy thông tin đơn hàng hoặc email khách hàng");
+
+                var trangThaiText = GetTrangThaiText(trangThai);
+                var emailSubject = $"Cập nhật trạng thái đơn hàng {hoaDon.ma_hoa_don}";
+
+                // Tạo nội dung chi tiết sản phẩm
+                var chiTietSanPham = string.Join("<br/>", hoaDon.HoaDonChiTiets.Select(ct =>
+                    $"- {ct.ten_san_pham} ({ct.ten_mau_sac}, {ct.ten_kich_co}): {ct.so_luong} x {ct.gia_sau_giam_gia:N0} VNĐ = {ct.thanh_tien:N0} VNĐ"
+                ));
+
+                var emailTemplate = $@"
+            <html>
+            <body style='font-family: Arial, sans-serif;'>
+                <h2>Thông báo về đơn hàng {hoaDon.ma_hoa_don}</h2>
+                <p>Xin chào {hoaDon.KhachHang.ten_khach_hang},</p>
+                
+                <p>Đơn hàng của bạn đã được cập nhật trạng thái thành: <strong>{trangThaiText}</strong></p>
+                
+                <h3>Thông tin đơn hàng:</h3>
+                <ul>
+                    <li>Mã đơn hàng: {hoaDon.ma_hoa_don}</li>
+                    <li>Ngày đặt: {hoaDon.ngay_tao:dd/MM/yyyy HH:mm}</li>
+                    <li>Phương thức thanh toán: {hoaDon.PhuongThucThanhToan?.ten_phuong_thuc_thanh_toan}</li>
+                    <li>Địa chỉ nhận hàng: {hoaDon.dia_chi_nhan_hang}</li>
+                </ul>
+
+                <h3>Chi tiết sản phẩm:</h3>
+                {chiTietSanPham}
+
+                <div style='margin-top: 20px;'>
+                    <p>Tổng tiền hàng: {hoaDon.tong_tien_don_hang:N0} VNĐ</p>
+                    <p>Phí vận chuyển: {hoaDon.phi_van_chuyen:N0} VNĐ</p>
+                    {(hoaDon.so_tien_khuyen_mai > 0 ? $"<p>Giảm giá: {hoaDon.so_tien_khuyen_mai:N0} VNĐ</p>" : "")}
+                    <p><strong>Tổng thanh toán: {hoaDon.tong_tien_phai_thanh_toan:N0} VNĐ</strong></p>
+                </div>
+
+                {GetTrangThaiMessage(trangThai, inforCuaHang)}
+
+                <p>Nếu bạn có bất kỳ thắc mắc nào, vui lòng liên hệ với chúng tôi qua:</p>
+                <ul>
+                    <li>Email: {inforCuaHang.email}</li>
+                    <li>Hotline: {inforCuaHang.sdt}</li>
+                </ul>
+
+                <p>Cảm ơn bạn đã mua sắm tại {inforCuaHang.ten_cua_hang}!</p>
+            </body>
+            </html>";
+
+                var result = await _emailService.SendEmailAsync(
+                    hoaDon.KhachHang.email,
+                    emailSubject,
+                    emailTemplate
+                );
+
+                return result
+                    ? (true, "Gửi email thông báo thành công")
+                    : (false, "Không thể gửi email thông báo");
+            }
+            catch (Exception ex)
+            {
+                return (false, $"Lỗi khi gửi email: {ex.Message}");
+            }
+        }
+
+        private string GetTrangThaiText(string trangThai)
+        {
+            return trangThai switch
+            {
+                "ChuaThanhToan" => "Chưa thanh toán",
+                "DaThanhToan" => "Đã thanh toán",
+                "DangChoXuLy" => "Đang chờ xử lý",
+                "DaXacNhan" => "Đã xác nhận",
+                "DangChuanBi" => "Đang chuẩn bị hàng",
+                "DangGiaoHang" => "Đang giao hàng",
+                "DaHoanThanh" => "Đã hoàn thành",
+                "DaHuy" => "Đã hủy",
+                "HetHang" => "Hết hàng",
+                _ => trangThai
+            };
+        }
+
+        private string GetTrangThaiMessage(string trangThai, CuaHang cuaHang)
+        {
+            return trangThai switch
+            {
+                "DaXacNhan" => @"
+            <p>Đơn hàng của bạn đã được xác nhận. 
+            Chúng tôi sẽ thông báo cho bạn khi đơn hàng của bạn được chuẩn bị.</p>",
+
+                "DangChuanBi" => @"
+            <p>Đơn hàng của bạn đang được chuẩn bị. 
+            Chúng tôi sẽ thông báo cho bạn ngay khi đơn hàng được giao cho đơn vị vận chuyển.</p>",
+
+                "DangGiaoHang" => @"
+            <p>Đơn hàng của bạn đang được giao. 
+            Vui lòng chuẩn bị số tiền {hoaDon.tong_tien_phai_thanh_toan:N0} VNĐ nếu bạn chọn thanh toán khi nhận hàng.</p>",
+
+                "DaHoanThanh" => @"
+            <p>Đơn hàng của bạn đã được giao thành công. 
+            Cảm ơn bạn đã tin tưởng và mua sắm tại " + cuaHang.ten_cua_hang + "!</p>",
+
+                "DaHuy" => @"
+            <p>Đơn hàng của bạn đã bị hủy. 
+            Nếu bạn đã thanh toán, chúng tôi sẽ hoàn tiền trong vòng 3-5 ngày làm việc.</p>",
+
+                "HetHang" => @"
+            <p>Rất tiếc, đơn hàng của bạn không thể thực hiện do hết hàng. 
+            Nếu bạn đã thanh toán, chúng tôi sẽ hoàn tiền trong vòng 3-5 ngày làm việc.</p>",
+
+                _ => ""
+            };
+        }
+        public async Task<(bool success, string message)> CapNhatTrangThaiDonHangAsync(Guid idHoaDon, string trangThai, Guid id_nhan_vien_xu_ly)
+        {
+            try
+            {
+                // Validate nhân viên xử lý
+                if (!await ValidateNhanVienXuLy(id_nhan_vien_xu_ly))
+                {
+                    return (false, "Nhân viên xử lý không hợp lệ hoặc không tồn tại");
+                }
+
+                // Validate trạng thái
+                if (!Enum.TryParse<TrangThaiDonHang>(trangThai, out _))
+                {
+                    return (false, "Trạng thái không hợp lệ");
+                }
+
+                if (!new[] { "DangChuanBi", "DangGiaoHang", "DaHoanThanh" }.Contains(trangThai))
+                {
+                    return (false, "Trạng thái không hợp lệ. Trạng thái đơn hàng phải là DangChuanBi, DangGiaoHang hoặc DaHoanThanh");
+                }
+
+                // Lấy thông tin đơn hàng
+                var hoaDon = await _hoaDonRepository.GetByIdWithIncludeAsync(idHoaDon,
+                    q => q.Include(hd => hd.HoaDonChiTiets)
+                          .Include(hd => hd.KhachHang)
+                          .Include(hd => hd.PhuongThucThanhToan));
+
+                if (hoaDon == null)
+                {
+                    return (false, "Không tìm thấy đơn hàng");
+                }
+
+                // Kiểm tra tính hợp lệ của luồng trạng thái
+                if (!IsValidStatusTransition(hoaDon.trang_thai_hoa_don, trangThai))
+                {
+                    return (false, $"Không thể chuyển từ trạng thái {hoaDon.trang_thai_hoa_don} sang trạng thái {trangThai}");
+                }
+
+                // Kiểm tra điều kiện nghiệp vụ cụ thể cho từng trạng thái
+                if (trangThai == "DaHoanThanh")
+                {
+                    if (hoaDon.PhuongThucThanhToan?.ma_phuong_thuc_thanh_toan == "TienMat" &&
+                        (!hoaDon.so_tien_khach_tra.HasValue || hoaDon.so_tien_khach_tra < hoaDon.tong_tien_phai_thanh_toan))
+                    {
+                        return (false, "Chưa nhập đủ số tiền khách trả cho đơn hàng thanh toán tiền mặt");
+                    }
+                }
+
+                // Thực hiện cập nhật trong transaction với retry logic
+                var success = await RetryOperation(async () =>
+                {
+                    return await _hoaDonRepository.ExecuteInTransactionAsync(async () =>
+                    {
+                        // Cập nhật trạng thái đơn hàng
+                        hoaDon.trang_thai_hoa_don = trangThai;
+                        hoaDon.ngay_sua = DateTime.Now;
+                        hoaDon.id_nhan_vien_xu_ly = id_nhan_vien_xu_ly;
+
+                        // Cập nhật trạng thái các chi tiết đơn hàng
+                        foreach (var chiTiet in hoaDon.HoaDonChiTiets)
+                        {
+                            chiTiet.trang_thai = trangThai;
+                            chiTiet.ngay_sua = DateTime.Now;
+                            chiTiet.id_nhan_vien_xu_ly = id_nhan_vien_xu_ly;
+
+                            var updateChiTietResult = await _hoaDonChiTietRepository.UpdateAsync(chiTiet);
+                            if (!updateChiTietResult) return false;
+                        }
+
+                        // Cập nhật đơn hàng
+                        var updateResult = await _hoaDonRepository.UpdateAsync(hoaDon);
+                        if (!updateResult) return false;
+
+                        // Gửi email thông báo cho khách hàng
+                        if (hoaDon.KhachHang?.email != null)
+                        {
+                            try
+                            {
+                                await GuiEmailCapNhatTrangThaiAsync(idHoaDon, trangThai);
+                            }
+                            catch (Exception ex)
+                            {
+                                // Log lỗi nhưng không dừng quy trình
+                                Console.WriteLine($"Lỗi gửi email: {ex.Message}");
+                            }
+                        }
+
+                        return true;
+                    });
+                });
+
+                if (success)
+                {
+                    var thongBao = trangThai switch
+                    {
+                        "DangChuanBi" => "Đơn hàng đang được chuẩn bị",
+                        "DangGiaoHang" => "Đơn hàng đang được giao",
+                        "DaHoanThanh" => "Đơn hàng đã giao thành công",
+                        _ => $"Đã cập nhật trạng thái đơn hàng thành {trangThai}"
+                    };
+                    return (true, thongBao);
+                }
+
+                return (false, "Không thể cập nhật trạng thái đơn hàng. Vui lòng thử lại sau");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Lỗi cập nhật trạng thái đơn hàng: {ex.Message}");
+                return (false, $"Đã xảy ra lỗi khi cập nhật trạng thái đơn hàng: {ex.Message}");
+            }
+        }
+        public async Task<(bool success, string message)> DanhDauHetHangAsync(Guid idHoaDon, string ghiChu, Guid id_nhan_vien_xu_ly)
+        {
+            try
+            {
+                // Validate input parameters
+                if (string.IsNullOrWhiteSpace(ghiChu))
+                {
+                    return (false, "Vui lòng nhập lý do hết hàng");
+                }
+
+                if (!await ValidateNhanVienXuLy(id_nhan_vien_xu_ly))
+                {
+                    return (false, "Nhân viên xử lý không hợp lệ hoặc không tồn tại");
+                }
+
+                // Lấy thông tin đơn hàng với các thông tin liên quan
+                var hoaDon = await _hoaDonRepository.GetByIdWithIncludeAsync(idHoaDon,
+                    q => q.Include(hd => hd.HoaDonChiTiets)
+                          .ThenInclude(hct => hct.SanPhamChiTiet)
+                          .Include(hd => hd.KhachHang)
+                          .Include(hd => hd.PhuongThucThanhToan));
+
+                if (hoaDon == null)
+                {
+                    return (false, "Không tìm thấy đơn hàng");
+                }
+
+                // Chỉ cho phép đánh dấu hết hàng khi đơn hàng ở trạng thái "DangChoXuLy"
+                if (hoaDon.trang_thai_hoa_don != "DangChoXuLy")
+                {
+                    return (false, "Chỉ có thể đánh dấu hết hàng cho đơn hàng đang chờ xử lý");
+                }
+
+                // Kiểm tra tình trạng tồn kho của từng sản phẩm
+                var sanPhamHetHang = new List<string>();
+                var sanPhamConHang = new List<string>();
+
+                foreach (var chiTiet in hoaDon.HoaDonChiTiets)
+                {
+                    var sanPham = await _sanPhamChiTietRepository.GetByIdAsync(chiTiet.id_san_pham_chi_tiet);
+                    if (sanPham != null)
+                    {
+                        if (sanPham.so_luong >= chiTiet.so_luong)
+                        {
+                            sanPhamConHang.Add($"{chiTiet.ten_san_pham} ({chiTiet.ten_mau_sac}, {chiTiet.ten_kich_co})");
+                        }
+                        else
+                        {
+                            sanPhamHetHang.Add($"{chiTiet.ten_san_pham} ({chiTiet.ten_mau_sac}, {chiTiet.ten_kich_co})");
+                        }
+                    }
+                }
+
+                // Log cảnh báo nếu có sản phẩm vẫn còn hàng
+                if (sanPhamConHang.Any())
+                {
+                    Console.WriteLine($"Cảnh báo: Các sản phẩm sau vẫn còn hàng: {string.Join(", ", sanPhamConHang)}");
+                }
+
+                // Thực hiện cập nhật trong transaction với retry logic
+                var success = await RetryOperation(async () =>
+                {
+                    return await _hoaDonRepository.ExecuteInTransactionAsync(async () =>
+                    {
+                        // Cập nhật trạng thái đơn hàng
+                        hoaDon.trang_thai_hoa_don = "HetHang";
+                        hoaDon.ngay_sua = DateTime.Now;
+                        hoaDon.ly_do_huy_don_hang = $"Hết hàng: {ghiChu}\nSản phẩm hết hàng: {string.Join(", ", sanPhamHetHang)}";
+                        hoaDon.id_nhan_vien_xu_ly = id_nhan_vien_xu_ly;
+
+                        // Cập nhật trạng thái các chi tiết đơn hàng
+                        foreach (var chiTiet in hoaDon.HoaDonChiTiets)
+                        {
+                            chiTiet.trang_thai = "HetHang";
+                            chiTiet.ghi_chu = ghiChu;
+                            chiTiet.ngay_sua = DateTime.Now;
+                            chiTiet.id_nhan_vien_xu_ly = id_nhan_vien_xu_ly;
+
+                            var updateChiTietResult = await _hoaDonChiTietRepository.UpdateAsync(chiTiet);
+                            if (!updateChiTietResult) return false;
+                        }
+
+                        // Cập nhật đơn hàng
+                        var updateResult = await _hoaDonRepository.UpdateAsync(hoaDon);
+                        if (!updateResult) return false;
+
+                        // Gửi email thông báo cho khách hàng
+                        if (hoaDon.KhachHang?.email != null)
+                        {
+                            try
+                            {
+                                await GuiEmailCapNhatTrangThaiAsync(idHoaDon, "HetHang");
+                            }
+                            catch (Exception ex)
+                            {
+                                // Log lỗi nhưng không dừng quy trình
+                                Console.WriteLine($"Lỗi gửi email: {ex.Message}");
+                            }
+                        }
+
+                        // Kiểm tra và hoàn tiền nếu đã thanh toán qua VNPay
+                        if (hoaDon.PhuongThucThanhToan?.ma_phuong_thuc_thanh_toan == "PTVNPAY" &&
+                            hoaDon.trang_thai_hoa_don == "DaThanhToan")
+                        {
+                            try
+                            {
+                                var hoantien = await HoanTienVNPayAsync(idHoaDon);
+                                if (!hoantien.success)
+                                {
+                                    Console.WriteLine($"Cảnh báo: Lỗi hoàn tiền VNPay: {hoantien.message}");
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                Console.WriteLine($"Lỗi xử lý hoàn tiền VNPay: {ex.Message}");
+                            }
+                        }
+
+                        return true;
+                    });
+                });
+
+                if (success)
+                {
+                    var message = "Đã đánh dấu đơn hàng là hết hàng";
+                    if (sanPhamHetHang.Any())
+                    {
+                        message += $"\nSản phẩm hết hàng: {string.Join(", ", sanPhamHetHang)}";
+                    }
+                    return (true, message);
+                }
+
+                return (false, "Không thể cập nhật trạng thái đơn hàng. Vui lòng thử lại sau");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Lỗi đánh dấu đơn hàng hết hàng: {ex.Message}");
+                return (false, $"Đã xảy ra lỗi khi đánh dấu đơn hàng hết hàng: {ex.Message}");
+            }
+        }
+        public async Task<(bool success, string message)> HoanTienVNPayAsync(Guid idHoaDon)
+        {
+            try
+            {
+                // Lấy thông tin đơn hàng với các thông tin liên quan
+                var hoaDon = await _hoaDonRepository.GetByIdWithIncludeAsync(idHoaDon,
+                    q => q.Include(hd => hd.PhuongThucThanhToan)
+                          .Include(hd => hd.KhachHang));
+
+                if (hoaDon == null)
+                    return (false, "Không tìm thấy đơn hàng");
+
+                // Kiểm tra điều kiện tiên quyết
+                if (hoaDon.PhuongThucThanhToan?.ma_phuong_thuc_thanh_toan != "PTVNPAY")
+                    return (false, "Đơn hàng không thanh toán qua VNPay, không thể hoàn tiền");
+
+                if (hoaDon.trang_thai_hoa_don != "DaThanhToan" &&
+                    hoaDon.trang_thai_hoa_don != "DangChoXuLy" &&
+                    hoaDon.trang_thai_hoa_don != "HetHang" &&
+                    hoaDon.trang_thai_hoa_don != "DaHuy")
+                    return (false, "Trạng thái đơn hàng không hợp lệ để hoàn tiền");
+
+                // Extract transaction ID from order note or generate refund ID
+                string transactionId = string.Empty;
+                if (hoaDon.ghi_chu != null && hoaDon.ghi_chu.Contains("VNPay Transaction ID:"))
+                {
+                    // Extract transaction ID from note
+                    int startIndex = hoaDon.ghi_chu.IndexOf("VNPay Transaction ID:") + "VNPay Transaction ID:".Length;
+                    transactionId = hoaDon.ghi_chu.Substring(startIndex).Trim();
+
+                    // If there's additional text after the ID, trim it
+                    int spaceIndex = transactionId.IndexOf(' ');
+                    if (spaceIndex > 0)
+                        transactionId = transactionId.Substring(0, spaceIndex);
+                }
+                else
+                {
+                    // If no transaction ID found, use the numeric part of the order code
+                    transactionId = hoaDon.ma_hoa_don.Replace("HD", "");
+                }
+
+                // Tạo thông tin hoàn tiền
+                var refundAmount = (long)(hoaDon.tong_tien_phai_thanh_toan ?? 0);
+                if (refundAmount <= 0)
+                    return (false, "Số tiền hoàn không hợp lệ");
+
+                // Thực hiện hoàn tiền qua VNPay
+                var refundResult = await _vnPayService.RefundPayment(
+                    transactionId,
+                    refundAmount,
+                    $"Hoàn tiền đơn hàng {hoaDon.ma_hoa_don} - {GetRefundReason(hoaDon.trang_thai_hoa_don)}"
+                );
+
+                if (!refundResult.Success)
+                    return (false, $"Hoàn tiền thất bại: {refundResult.Message}");
+
+                // Cập nhật đơn hàng
+                hoaDon.ghi_chu = (hoaDon.ghi_chu ?? "") + $"\nĐã hoàn tiền VNPay: {DateTime.Now:dd/MM/yyyy HH:mm:ss}. Mã giao dịch: {refundResult.TransactionId}";
+                await _hoaDonRepository.UpdateAsync(hoaDon);
+
+                // Gửi email thông báo hoàn tiền cho khách hàng
+                if (!string.IsNullOrEmpty(hoaDon.KhachHang?.email))
+                {
+                    var emailSubject = $"Xác nhận hoàn tiền cho đơn hàng {hoaDon.ma_hoa_don}";
+                    var emailContent = $@"
+                <html>
+                <body style='font-family: Arial, sans-serif;'>
+                    <h2>Xác nhận hoàn tiền</h2>
+                    <p>Xin chào {hoaDon.KhachHang.ten_khach_hang ?? "khách hàng"},</p>
+                    
+                    <p>Chúng tôi đã xử lý hoàn tiền cho đơn hàng <strong>{hoaDon.ma_hoa_don}</strong>.</p>
+                    
+                    <h3>Thông tin hoàn tiền:</h3>
+                    <ul>
+                        <li>Mã đơn hàng: {hoaDon.ma_hoa_don}</li>
+                        <li>Số tiền hoàn: {hoaDon.tong_tien_phai_thanh_toan:N0} VNĐ</li>
+                        <li>Phương thức thanh toán: VNPay</li>
+                        <li>Lý do hoàn tiền: {GetRefundReason(hoaDon.trang_thai_hoa_don)}</li>
+                        <li>Ngày hoàn tiền: {DateTime.Now:dd/MM/yyyy HH:mm:ss}</li>
+                    </ul>
+                    
+                    <p>Số tiền sẽ được hoàn về tài khoản của bạn trong vòng 3-5 ngày làm việc tùy theo ngân hàng.</p>
+                    
+                    <p>Nếu bạn có bất kỳ thắc mắc nào, vui lòng liên hệ với chúng tôi qua email hoặc hotline.</p>
+                    
+                    <p>Trân trọng,<br/>
+                    Đội ngũ hỗ trợ khách hàng</p>
+                </body>
+                </html>";
+
+                    await _emailService.SendEmailAsync(hoaDon.KhachHang.email, emailSubject, emailContent);
+                }
+
+                return (true, "Hoàn tiền thành công");
+            }
+            catch (Exception ex)
+            {
+                // Log lỗi
+                Console.WriteLine($"Lỗi hoàn tiền VNPay: {ex.Message}");
+                return (false, $"Đã xảy ra lỗi khi hoàn tiền: {ex.Message}");
+            }
+        }
+        private string GetRefundReason(string trangThai)
+        {
+            return trangThai switch
+            {
+                "DaHuy" => "Đơn hàng đã bị hủy",
+                "HetHang" => "Sản phẩm trong đơn hàng đã hết hàng",
+                _ => "Yêu cầu hoàn tiền"
+            };
+        }
+
+        public async Task<(bool success, string message)> HuyDonHangAsync(Guid idHoaDon, string lyDo, bool isKhachHangHuy = true, Guid? id_nhan_vien_xu_ly = null)
+        {
+            try
+            {
+                // Lấy thông tin đơn hàng với các thông tin liên quan
+                var hoaDon = await _hoaDonRepository.GetByIdWithIncludeAsync(idHoaDon,
+                    q => q.Include(hd => hd.HoaDonChiTiets)
+                          .ThenInclude(hct => hct.SanPhamChiTiet)
+                          .Include(hd => hd.KhachHang)
+                          .Include(hd => hd.KhuyenMai)
+                          .Include(hd => hd.PhuongThucThanhToan));
+
+                if (hoaDon == null)
+                    return (false, "Không tìm thấy đơn hàng");
+
+                // Kiểm tra trạng thái hóa đơn có cho phép hủy không
+                // Chỉ cho phép hủy đơn hàng ở trạng thái chưa thanh toán, đã thanh toán hoặc đang chờ xử lý
+                if (hoaDon.trang_thai_hoa_don != "ChuaThanhToan" &&
+                    hoaDon.trang_thai_hoa_don != "DangChoXuLy" &&
+                    hoaDon.trang_thai_hoa_don != "DaThanhToan")
+                {
+                    return (false, "Không thể hủy đơn hàng ở trạng thái hiện tại");
+                }
+
+                // Nếu đơn đã qua khâu xác nhận (DaXacNhan, DangChuanBi, DangGiaoHang) thì khách không thể hủy
+                if (isKhachHangHuy &&
+                    (hoaDon.trang_thai_hoa_don == "DaXacNhan" ||
+                     hoaDon.trang_thai_hoa_don == "DangChuanBi" ||
+                     hoaDon.trang_thai_hoa_don == "DangGiaoHang"))
+                {
+                    return (false, "Đơn hàng đã được xác nhận, không thể hủy");
+                }
+
+                // Thực hiện cập nhật trong transaction
+                var success = await _hoaDonRepository.ExecuteInTransactionAsync(async () =>
+                {
+                    // Kiểm tra và hoàn tiền nếu đơn hàng đã thanh toán qua VNPay
+                    if (hoaDon.PhuongThucThanhToan?.ma_phuong_thuc_thanh_toan == "PTVNPAY" &&
+                        (hoaDon.trang_thai_hoa_don == "DaThanhToan" || hoaDon.trang_thai_hoa_don == "DangChoXuLy"))
+                    {
+                        var hoantien = await HoanTienVNPayAsync(idHoaDon);
+                        if (!hoantien.success)
+                        {
+                            // Ghi log lỗi hoàn tiền, nhưng vẫn tiếp tục quá trình hủy đơn
+                            Console.WriteLine($"Lỗi hoàn tiền VNPay: {hoantien.message}");
+                            // Không return false ở đây vì chúng ta vẫn muốn hủy đơn hàng
+                            // ngay cả khi việc hoàn tiền gặp vấn đề
+                        }
+                    }
+                    // Cập nhật trạng thái đơn hàng
+                    hoaDon.trang_thai_hoa_don = "DaHuy";
+                    hoaDon.ngay_sua = DateTime.Now;
+                    hoaDon.ly_do_huy_don_hang = lyDo;
+                    hoaDon.id_nhan_vien_xu_ly = id_nhan_vien_xu_ly;
+
+                    // Cập nhật trạng thái các chi tiết đơn hàng
+                    foreach (var chiTiet in hoaDon.HoaDonChiTiets)
+                    {
+                        chiTiet.trang_thai = "DaHuy";
+                        chiTiet.ngay_sua = DateTime.Now;
+
+                        var updateChiTietResult = await _hoaDonChiTietRepository.UpdateAsync(chiTiet);
+                        if (!updateChiTietResult) return false;
+                    }
+
+                    // Giảm số lượng sử dụng khuyến mãi nếu có
+                    if (hoaDon.id_khuyen_mai.HasValue && hoaDon.KhuyenMai != null)
+                    {
+                        hoaDon.KhuyenMai.so_luong_da_su_dung = Math.Max(0, hoaDon.KhuyenMai.so_luong_da_su_dung - 1);
+                        var updateKMResult = await _khuyenMaiRepository.UpdateAsync(hoaDon.KhuyenMai);
+                        if (!updateKMResult) return false;
+                    }
+
+                    // Cập nhật đơn hàng
+                    var updateHoaDonResult = await _hoaDonRepository.UpdateAsync(hoaDon);
+                    if (!updateHoaDonResult) return false;
+
+                    // Gửi email thông báo hủy đơn hàng
+                    if (hoaDon.KhachHang?.email != null)
+                    {
+                        await GuiEmailCapNhatTrangThaiAsync(idHoaDon, "DaHuy");
+                    }
+
+
+
+                    return true;
+                });
+
+                if (success)
+                {
+                    var message = isKhachHangHuy
+                        ? "Đơn hàng đã được hủy theo yêu cầu của khách hàng"
+                        : "Đơn hàng đã được hủy";
+                    return (true, message);
+                }
+                return (false, "Không thể hủy đơn hàng. Vui lòng thử lại sau.");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Lỗi khi hủy đơn hàng: {ex.Message}");
+                return (false, $"Đã xảy ra lỗi khi hủy đơn hàng: {ex.Message}");
+            }
+        }
+        public async Task<(bool success, string message, Guid id_hoa_don)> TaoHoaDonOnlineTrangThaiChuaThanhToan(Guid id_khach_hang, decimal phi_van_chuyen)
+        {
+            var khachHang = await _khachHangRepository.GetByIdWithIncludeAsync(id_khach_hang, q => q.Include(x => x.DiaChis));
+            if (khachHang == null)
+                return (false, "Khách hàng không tồn tại", Guid.Empty);
+            if (khachHang.DiaChis.Count == 0)
+                return (false, "Khách hàng không có địa chỉ nhận hàng", Guid.Empty);
+            var diaChi = khachHang.DiaChis.Where(x => x.dia_chi_mac_dinh == true).FirstOrDefault();
+            if (diaChi == null)
+                return (false, "Khách hàng không có địa chỉ nhận hàng", Guid.Empty);
+
+            var cuaHang = await _cuaHangRepository.GetFirstOrDefaultAsync(x => x.id_cua_hang != Guid.Empty);
+            var phuongThucThanhToan = await _phuongThucThanhToanRepository.GetFirstOrDefaultAsync(x => x.ten_phuong_thuc_thanh_toan == "Tiền mặt");
+            if (phuongThucThanhToan == null)
+                return (false, "Phương thức thanh toán tiền mặt không tồn tại", Guid.Empty);
+            var hoadonNew = new HoaDon
+            {
+                id_hoa_don = Guid.NewGuid(),
+                ma_hoa_don = await TaoMaHoaDon(),
+                id_khach_hang = id_khach_hang,
+                trang_thai_hoa_don = "ChuaThanhToan",
+                loai_hoa_don = "Online",
+                ngay_tao = DateTime.Now,
+                phi_van_chuyen = phi_van_chuyen,
+                id_phuong_thuc_thanh_toan = phuongThucThanhToan.id_phuong_thuc_thanh_toan
+            };
+            await _hoaDonRepository.CreateAsync(hoadonNew);
+
+            var gioHangItems = await _gioHangChiTietRepository.GetByConditionWithIncludeAsync(x => x.id_khach_hang == id_khach_hang, q => q.Include(x => x.SanPhamChiTiet).ThenInclude(x => x.SanPham).Include(x => x.SanPhamChiTiet).ThenInclude(x => x.MauSac).Include(x => x.SanPhamChiTiet).ThenInclude(x => x.KichCo));
+
+            decimal tongTienDonHang = 0;
+            foreach (var item in gioHangItems)
+            {
+                if (item.so_luong > item.SanPhamChiTiet.so_luong)
+                {
+                    return (false, $"Số lượng sản phẩm {item.SanPhamChiTiet.SanPham.ten_san_pham} - {item.SanPhamChiTiet.MauSac.ten_mau_sac} - {item.SanPhamChiTiet.KichCo.ten_kich_co} không đủ {item.so_luong} sản phẩm", Guid.Empty);
+                }
+                var hoaDonChiTiet = new HoaDonChiTiet
+                {
+                    id_hoa_don_chi_tiet = Guid.NewGuid(),
+                    id_hoa_don = hoadonNew.id_hoa_don,
+                    ma_hoa_don_chi_tiet = await TaoMaHoaDonChiTiet(hoadonNew.id_hoa_don),
+                    id_san_pham_chi_tiet = item.id_san_pham_chi_tiet,
+                    ten_san_pham = item.SanPhamChiTiet.SanPham.ten_san_pham,
+                    ten_mau_sac = item.SanPhamChiTiet.MauSac.ten_mau_sac,
+                    ten_kich_co = item.SanPhamChiTiet.KichCo.ten_kich_co,
+                    so_luong = item.so_luong,
+
+                    don_gia = item.SanPhamChiTiet.gia_ban,
+                    gia_sau_giam_gia = await TinhTongTienSauGiamGiaSanPham(item.id_san_pham_chi_tiet),
+                    gia_tri_khuyen_mai_cua_hoa_don_cho_hdct = 0,
+                    trang_thai = "ChuaThanhToan",
+                    ghi_chu = null,
+                };
+                hoaDonChiTiet.thanh_tien = hoaDonChiTiet.gia_sau_giam_gia * hoaDonChiTiet.so_luong;
+                tongTienDonHang += hoaDonChiTiet.thanh_tien;
+                await _hoaDonChiTietRepository.CreateAsync(hoaDonChiTiet);
+
+
+                var gioHangChiTiet = await _gioHangChiTietRepository.GetByIdAsync(item.id_gio_hang_chi_tiet);
+                if (gioHangChiTiet != null)
+                {
+                    await _gioHangChiTietRepository.DeleteAsync(gioHangChiTiet.id_gio_hang_chi_tiet);
+                }
+            }
+            hoadonNew.tong_tien_don_hang = tongTienDonHang;
+            hoadonNew.tong_tien_phai_thanh_toan = tongTienDonHang + phi_van_chuyen;
+            hoadonNew.ten_khach_hang = khachHang.ten_khach_hang;
+            hoadonNew.sdt_khach_hang = khachHang.so_dien_thoai;
+            hoadonNew.dia_chi_nhan_hang = diaChi.tinh + ", " + diaChi.huyen + ", " + diaChi.xa + ", " + diaChi.dia_chi_cu_the;
+            hoadonNew.id_cua_hang = cuaHang.id_cua_hang == null ? Guid.Empty : cuaHang.id_cua_hang;
+            await _hoaDonRepository.UpdateAsync(hoadonNew);
+            return (true, "Tạo hóa đơn online thành công", hoadonNew.id_hoa_don);
         }
     }
 }

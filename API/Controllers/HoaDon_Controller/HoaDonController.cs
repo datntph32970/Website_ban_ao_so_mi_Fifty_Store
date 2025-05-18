@@ -980,13 +980,6 @@ namespace API.Controllers.HoaDon_Controller
                 hoaDon.trang_thai_hoa_don = "DangChoXuLy";
                 hoaDon.ngay_sua = DateTime.Now;
 
-                // Update product quantities
-                foreach (var hoaDonChiTiet in hoaDon.HoaDonChiTiets)
-                {
-                    hoaDonChiTiet.SanPhamChiTiet.so_luong -= hoaDonChiTiet.so_luong;
-                    await _sanPhamChiTietService.UpdateAsync(hoaDonChiTiet.SanPhamChiTiet);
-                }
-
                 var updateResult = await _hoaDonService.UpdateAsync(hoaDon);
                 if (!updateResult)
                     return BadRequest("Không thể cập nhật trạng thái hóa đơn");
@@ -1096,89 +1089,209 @@ namespace API.Controllers.HoaDon_Controller
             }
         }
 
+
         /// <summary>
-        /// Hủy đơn hàng ở trạng thái chưa thanh toán
+        /// Xác nhận đơn hàng (chuyển từ DangChoXuLy sang DaXacNhan)
         /// </summary>
-        /// <param name="id_hoa_don">ID của hóa đơn cần hủy</param>
-        /// <returns>Kết quả hủy đơn hàng</returns>
-        [HttpPut("huy-don-hang-chua-thanh-toan/{id_hoa_don}")]
+        [HttpPut("xac-nhan-don-hang/{id_hoa_don}")]
+        [Authorize(Roles = "Admin,NhanVien")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> XacNhanDonHang(Guid id_hoa_don)
+        {
+            try
+            {
+                var id_nhan_vien = GetIdNhanVien();
+                if (id_nhan_vien == null)
+                    return Unauthorized("Không thể xác thực thông tin nhân viên");
+
+                var (success, message) = await _hoaDonService.XacNhanDonHangAsync(id_hoa_don, id_nhan_vien.Value);
+                if (!success)
+                    return BadRequest(message);
+
+                return Ok(new { message });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest($"Đã xảy ra lỗi: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Đánh dấu đơn hàng là hết hàng
+        /// </summary>
+        [HttpPut("danh-dau-het-hang/{id_hoa_don}")]
+        [Authorize(Roles = "Admin,NhanVien")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> DanhDauHetHang(Guid id_hoa_don, [FromBody] GhiChuRequest request)
+        {
+            try
+            {
+                var id_nhan_vien = GetIdNhanVien();
+                if (id_nhan_vien == null)
+                    return Unauthorized("Không thể xác thực thông tin nhân viên");
+
+                var (success, message) = await _hoaDonService.DanhDauHetHangAsync(id_hoa_don, request.ghi_chu, id_nhan_vien.Value);
+                if (!success)
+                    return BadRequest(message);
+
+                return Ok(new { message });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest($"Đã xảy ra lỗi: {ex.Message}");
+            }
+        }
+
+        public class GhiChuRequest
+        {
+            [Required(ErrorMessage = "Vui lòng nhập ghi chú")]
+            public string ghi_chu { get; set; }
+        }
+
+        /// <summary>
+        /// Cập nhật trạng thái giao hàng (DangChuanBi, DangGiaoHang, DaHoanThanh)
+        /// </summary>
+        [HttpPut("cap-nhat-trang-thai-giao-hang/{id_hoa_don}")]
+        [Authorize(Roles = "Admin,NhanVien")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> CapNhatTrangThaiGiaoHang(Guid id_hoa_don, [FromBody] TrangThaiRequest request)
+        {
+            try
+            {
+                var id_nhan_vien = GetIdNhanVien();
+                if (id_nhan_vien == null)
+                    return Unauthorized("Không thể xác thực thông tin nhân viên");
+
+                var (success, message) = await _hoaDonService.CapNhatTrangThaiDonHangAsync(id_hoa_don, request.trang_thai, id_nhan_vien.Value);
+                if (!success)
+                    return BadRequest(message);
+
+                return Ok(new { message });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest($"Đã xảy ra lỗi: {ex.Message}");
+            }
+        }
+
+        public class TrangThaiRequest
+        {
+            [Required(ErrorMessage = "Vui lòng chọn trạng thái")]
+            [RegularExpression("^(DangChuanBi|DangGiaoHang|DaHoanThanh)$",
+                ErrorMessage = "Trạng thái không hợp lệ. Chỉ chấp nhận: DangChuanBi, DangGiaoHang, DaHoanThanh")]
+            public string trang_thai { get; set; }
+        }
+
+        /// <summary>
+        /// Hủy đơn hàng bởi admin hoặc nhân viên
+        /// </summary>
+        [HttpPut("huy-don-hang-admin/{id_hoa_don}")]
+        [Authorize(Roles = "Admin,NhanVien")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> HuyDonHangAdmin(Guid id_hoa_don, [FromBody] HuyDonRequest request)
+        {
+            try
+            {
+                var id_nhan_vien = GetIdNhanVien();
+                if (id_nhan_vien == null)
+                    return Unauthorized("Không thể xác thực thông tin nhân viên");
+
+                // Admin/nhân viên hủy đơn hàng (isKhachHangHuy = false)
+                var (success, message) = await _hoaDonService.HuyDonHangAsync(id_hoa_don, request.ly_do, false, id_nhan_vien.Value);
+                if (!success)
+                    return BadRequest(message);
+
+                return Ok(new { message });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest($"Đã xảy ra lỗi: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Hủy đơn hàng bởi khách hàng
+        /// </summary>
+        [HttpPut("huy-don-hang-khach-hang/{id_hoa_don}")]
         [Authorize(Roles = "KhachHang")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> HuyDonHang(Guid id_hoa_don)
+        public async Task<IActionResult> HuyDonHangKhachHang(Guid id_hoa_don, [FromBody] HuyDonRequest request)
         {
             try
             {
-                // Validate customer ID
-                var idKhachHang = GetIdKhachHang();
-                if (idKhachHang == null)
+                var id_khach_hang = GetIdKhachHang();
+                if (id_khach_hang == null)
                     return Unauthorized("Không thể xác thực thông tin khách hàng");
 
-                // Get order details with related data
-                var hoaDon = await _hoaDonService.GetByIdWithIncludeAsync(id_hoa_don,
-                    q => q.Include(hd => hd.HoaDonChiTiets)
-                         .ThenInclude(hct => hct.SanPhamChiTiet)
-                         .Include(hd => hd.KhuyenMai));
-
+                // Kiểm tra xem đơn hàng có thuộc về khách hàng này không
+                var hoaDon = await _hoaDonService.GetByIdAsync(id_hoa_don);
                 if (hoaDon == null)
-                    return NotFound("Không tìm thấy hóa đơn");
+                    return NotFound("Không tìm thấy đơn hàng");
 
-                if (hoaDon.id_khach_hang != idKhachHang)
+                if (hoaDon.id_khach_hang != id_khach_hang)
                     return Unauthorized("Bạn không có quyền hủy đơn hàng này");
 
-                if (hoaDon.trang_thai_hoa_don != "ChuaThanhToan" && hoaDon.trang_thai_hoa_don != "DangChoXuLy")
-                    return BadRequest("Chỉ có thể hủy đơn hàng ở trạng thái chưa thanh toán hoặc đang chờ xử lý");
-
-                // Execute cancellation in a transaction
-                var success = await _hoaDonService.ExecuteInTransactionAsync(async () =>
-                {
-                    // Update order status
-                    hoaDon.trang_thai_hoa_don = "DaHuy";
-                    hoaDon.ngay_sua = DateTime.Now;
-
-                    // Update status of all order details
-                    foreach (var chiTiet in hoaDon.HoaDonChiTiets)
-                    {
-                        chiTiet.trang_thai = "DaHuy";
-                        var chiTietUpdateResult = await _hoaDonChiTietService.UpdateAsync(chiTiet);
-                        if (!chiTietUpdateResult) return false;
-                    }
-
-                    // Remove promotion usage if any
-                    if (hoaDon.id_khuyen_mai.HasValue)
-                    {
-                        var khuyenMai = await _khuyenMaiService.GetByIdAsync(hoaDon.id_khuyen_mai.Value);
-                        if (khuyenMai != null)
-                        {
-                            khuyenMai.so_luong_da_su_dung = Math.Max(0, khuyenMai.so_luong_da_su_dung - 1);
-                            var khuyenMaiUpdateResult = await _khuyenMaiService.UpdateAsync(khuyenMai);
-                            if (!khuyenMaiUpdateResult) return false;
-                        }
-                    }
-
-                    var hoaDonUpdateResult = await _hoaDonService.UpdateAsync(hoaDon);
-                    return hoaDonUpdateResult;
-                });
-
+                // Khách hàng hủy đơn hàng (isKhachHangHuy = true)
+                var (success, message) = await _hoaDonService.HuyDonHangAsync(id_hoa_don, request.ly_do, true, id_khach_hang.Value);
                 if (!success)
-                    return BadRequest("Không thể hủy đơn hàng. Vui lòng thử lại sau.");
+                    return BadRequest(message);
 
-                // Get updated order details
-                var hoaDonCapNhat = await _hoaDonService.GetByIdHoaDonAdminDTOAsync(id_hoa_don);
-
-                return Ok(new
-                {
-                    message = "Hủy đơn hàng thành công",
-                    hoa_don = hoaDonCapNhat
-                });
+                return Ok(new { message });
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = "Đã xảy ra lỗi trong quá trình xử lý: " + ex.Message });
+                return BadRequest($"Đã xảy ra lỗi: {ex.Message}");
             }
         }
 
+        public class HuyDonRequest
+        {
+            [Required(ErrorMessage = "Vui lòng nhập lý do hủy đơn")]
+            public string ly_do { get; set; }
+        }
+
+        /// <summary>
+        /// Thủ công hoàn tiền VNPay cho đơn hàng
+        /// </summary>
+        [HttpPost("hoan-tien-vnpay/{id_hoa_don}")]
+        [Authorize(Roles = "Admin")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> HoanTienVNPay(Guid id_hoa_don)
+        {
+            try
+            {
+                var id_admin = GetIdNhanVien();
+                if (id_admin == null)
+                    return Unauthorized("Không thể xác thực thông tin admin");
+
+                var (success, message) = await _hoaDonService.HoanTienVNPayAsync(id_hoa_don);
+                if (!success)
+                    return BadRequest(message);
+
+                return Ok(new { message });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest($"Đã xảy ra lỗi: {ex.Message}");
+            }
+        }
     }
 }

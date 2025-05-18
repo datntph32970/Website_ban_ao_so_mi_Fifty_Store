@@ -18,6 +18,7 @@ namespace API.DbConects.Entities.Entities_Hoa_Don
         public decimal? so_tien_khuyen_mai { get; set; }
         [RegularExpression("^(PhanTram|TienMat)$\"", ErrorMessage = "Kiểu khuyến mãi không hợp lệ")]
         public string? ghi_chu { get; set; }
+        public string? ly_do_huy_don_hang { get; set; }
         public decimal? tong_tien_phai_thanh_toan { get; set; }
         public decimal? so_tien_khach_tra { get; set; }
         public decimal? so_tien_thua_tra_khach { get; set; }

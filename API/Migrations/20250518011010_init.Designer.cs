@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace API.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20250516024039_init8")]
-    partial class init8
+    [Migration("20250518011010_init")]
+    partial class init
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -77,11 +77,11 @@ namespace API.Migrations
                         {
                             id_cua_hang = new Guid("00000000-0000-1234-5678-901234567890"),
                             dia_chi = "Hà Nội",
-                            email = "shirtstore@gmail.com",
+                            email = "fiftystore@gmail.com",
                             id_nguoi_sua = new Guid("00000000-0000-0000-0000-000000000001"),
-                            mo_ta = "Cửa hàng thời trang nam",
+                            mo_ta = "Cửa hàng áo sơ mi thời trang nam",
                             sdt = "0123456789",
-                            ten_cua_hang = "Shirt Store",
+                            ten_cua_hang = "FIFTY STORE",
                             website = "https://www.shirtstore.com"
                         });
                 });
@@ -134,7 +134,7 @@ namespace API.Migrations
                     b.Property<Guid?>("id_khuyen_mai")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<Guid>("id_nhan_vien_xu_ly")
+                    b.Property<Guid?>("id_nhan_vien_xu_ly")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<Guid?>("id_phuong_thuc_thanh_toan")
@@ -142,6 +142,9 @@ namespace API.Migrations
 
                     b.Property<string>("loai_hoa_don")
                         .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ly_do_huy_don_hang")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("ma_hoa_don")
@@ -324,12 +327,12 @@ namespace API.Migrations
                         },
                         new
                         {
-                            id_phuong_thuc_thanh_toan = new Guid("12345678-9012-3456-7890-123456789013"),
+                            id_phuong_thuc_thanh_toan = new Guid("12345678-9012-3456-4213-123456781321"),
                             id_nguoi_tao = new Guid("00000000-0000-0000-0000-000000000001"),
-                            ma_phuong_thuc_thanh_toan = "PTCKHOAN",
-                            mo_ta = "Phương thức thanh toán chuyển khoản",
+                            ma_phuong_thuc_thanh_toan = "PTVNPAY",
+                            mo_ta = "Phương thức thanh toán VNPay",
                             ngay_tao = new DateTime(2025, 4, 21, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            ten_phuong_thuc_thanh_toan = "Chuyển khoản",
+                            ten_phuong_thuc_thanh_toan = "VNPAY",
                             trang_thai = true
                         });
                 });
@@ -1264,8 +1267,7 @@ namespace API.Migrations
                     b.HasOne("API.DbConects.Entities.Entities_Tai_Khoan.NhanVien", "NhanVienXuLy")
                         .WithMany("XulyHoaDons")
                         .HasForeignKey("id_nhan_vien_xu_ly")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("API.DbConects.Entities.Entities_Hoa_Don.PhuongThucThanhToan", "PhuongThucThanhToan")
                         .WithMany("HoaDons")

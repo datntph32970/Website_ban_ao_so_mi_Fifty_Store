@@ -27,5 +27,13 @@ namespace API.Services.Interfaces
             decimal phi_van_chuyen
         );
         Task<(bool success, string message)> XoaHoaDonChuaThanhToanQuaHan();
+        // Thêm các phương thức mới cho luồng trạng thái
+        Task<(bool success, string message)> HuyDonHangAsync(Guid idHoaDon, string lyDo, bool isKhachHangHuy = true, Guid? id_nhan_vien_xu_ly = null);
+        Task<(bool success, string message)> HoanTienVNPayAsync(Guid idHoaDon);
+        Task<(bool success, string message)> DanhDauHetHangAsync(Guid idHoaDon, string ghiChu, Guid id_nhan_vien_xu_ly);
+        Task<(bool success, string message)> GuiEmailCapNhatTrangThaiAsync(Guid idHoaDon, string trangThai);
+        Task<(bool success, string message)> XacNhanDonHangAsync(Guid idHoaDon, Guid id_nhan_vien_xu_ly);
+        Task<(bool success, string message)> CapNhatTrangThaiDonHangAsync(Guid idHoaDon, string trangThai, Guid id_nhan_vien_xu_ly);
+
     }
 }
