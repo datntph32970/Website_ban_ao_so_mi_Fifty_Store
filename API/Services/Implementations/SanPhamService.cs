@@ -97,6 +97,25 @@ namespace API.Services.Implementations
                             ma_danh_muc = s.DanhMuc.ma_danh_muc,
                             ten_danh_muc = s.DanhMuc.ten_danh_muc
                         } : null,
+                        kieuDang = s.KieuDang != null ? new KieuDangAdminDTO
+                        {
+                            id_kieu_dang = s.KieuDang.id_kieu_dang,
+                            ma_kieu_dang = s.KieuDang.ma_kieu_dang,
+                            ten_kieu_dang = s.KieuDang.ten_kieu_dang
+                        } : null,
+                        chatLieu = s.ChatLieu != null ? new ChatLieuAdminDTO
+                        {
+                            id_chat_lieu = s.ChatLieu.id_chat_lieu,
+                            ma_chat_lieu = s.ChatLieu.ma_chat_lieu,
+                            ten_chat_lieu = s.ChatLieu.ten_chat_lieu
+                        } : null,
+                        xuatXu = s.XuatXu != null ? new XuatXuAdminDTO
+                        {
+                            id_xuat_xu = s.XuatXu.id_xuat_xu,
+                            ma_xuat_xu = s.XuatXu.ma_xuat_xu,
+                            ten_xuat_xu = s.XuatXu.ten_xuat_xu
+                        } : null,
+
                         sanPhamChiTiets = chiTiets
                     };
                     sanPhams.Add(sanPham);
