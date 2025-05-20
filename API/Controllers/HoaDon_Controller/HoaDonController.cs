@@ -962,7 +962,24 @@ namespace API.Controllers.HoaDon_Controller
                     if (hoaDonChiTiet.SanPhamChiTiet.so_luong < hoaDonChiTiet.so_luong)
                         return BadRequest($"Sản phẩm {hoaDonChiTiet.ten_san_pham} - {hoaDonChiTiet.ten_mau_sac} - {hoaDonChiTiet.ten_kich_co} không đủ số lượng");
                 }
-
+                if (hoaDon.id_khuyen_mai.HasValue)
+                {
+                    var khuyenMai = await _khuyenMaiService.GetByIdAsync(hoaDon.id_khuyen_mai.Value);
+                    if (khuyenMai.so_luong_da_su_dung >= khuyenMai.so_luong_toi_da)
+                        return BadRequest("Mã khuyến mãi đã hết lượt sử dụng");
+                    if (khuyenMai.thoi_gian_bat_dau > DateTime.Now)
+                        return BadRequest("Mã khuyến mãi chưa đến thời gian áp dụng");
+                    if (khuyenMai.thoi_gian_ket_thuc < DateTime.Now)
+                        return BadRequest("Mã khuyến mãi đã hết thời gian áp dụng");
+                    if (hoaDon.tong_tien_don_hang < khuyenMai.gia_tri_don_hang_toi_thieu)
+                        return BadRequest(
+                            $"Giá trị đơn hàng chưa đạt giá trị tối thiểu để áp dụng khuyến mãi. " +
+                            $"Tối thiểu: {khuyenMai.gia_tri_don_hang_toi_thieu:N0} VNĐ");
+                    if (hoaDon.id_khach_hang != idKhachHang)
+                        return BadRequest("Bạn không có quyền xác nhận hóa đơn này");
+                    khuyenMai.so_luong_da_su_dung++;
+                    await _khuyenMaiService.UpdateAsync(khuyenMai);
+                }
                 // Check payment method
                 if (hoaDon.PhuongThucThanhToan?.ma_phuong_thuc_thanh_toan == "PTVNPAY")
                 {

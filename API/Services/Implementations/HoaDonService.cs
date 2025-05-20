@@ -34,15 +34,17 @@ namespace API.Services.Implementations
         private readonly IBaseRepository<HoaDon> _hoaDonRepository;
         private readonly IBaseRepository<HoaDonChiTiet> _hoaDonChiTietRepository;
         private readonly IBaseRepository<SanPhamChiTiet> _sanPhamChiTietRepository;
-
+        private readonly IBaseService<KhuyenMai> _khuyenMaiServices;
         public TransactionHelper(
             IBaseRepository<HoaDon> hoaDonRepository,
             IBaseRepository<HoaDonChiTiet> hoaDonChiTietRepository,
-            IBaseRepository<SanPhamChiTiet> sanPhamChiTietRepository)
+            IBaseRepository<SanPhamChiTiet> sanPhamChiTietRepository,
+            IBaseService<KhuyenMai> khuyenMaiServices)
         {
             _hoaDonRepository = hoaDonRepository;
             _hoaDonChiTietRepository = hoaDonChiTietRepository;
             _sanPhamChiTietRepository = sanPhamChiTietRepository;
+            _khuyenMaiServices = khuyenMaiServices;
         }
 
         public async Task<bool> ExecuteInTransactionAsync(Func<Task<bool>> operation, int maxRetries = 3)
@@ -90,6 +92,18 @@ namespace API.Services.Implementations
                 // Cập nhật trạng thái hóa đơn
                 hoaDon.trang_thai_hoa_don = "DaHuy";
                 hoaDon.ngay_sua = DateTime.Now;
+                // Hoàn lại số lượng khuyến mãi nếu có
+
+                if (hoaDon.id_khuyen_mai.HasValue)
+                {
+                    var khuyenMai = await _khuyenMaiServices.GetByIdAsync(hoaDon.id_khuyen_mai.Value);
+                    if (khuyenMai != null)
+                    {
+                        khuyenMai.so_luong_da_su_dung -= 1;
+                        await _khuyenMaiServices.UpdateAsync(khuyenMai);
+                    }
+                }
+
 
                 // // Hoàn lại số lượng sản phẩm
                 // foreach (var chiTiet in hoaDon.HoaDonChiTiets)
@@ -159,6 +173,7 @@ namespace API.Services.Implementations
             IBaseRepository<HoaDon> hoaDonRepository,
             IBaseRepository<HoaDonChiTiet> hoaDonChiTietRepository,
             IBaseRepository<SanPhamChiTiet> sanPhamChiTietRepository,
+            IBaseService<KhuyenMai> khuyenMaiServices,
             IBaseRepository<SanPham> sanPhamRepository,
             IBaseRepository<KhachHang> khachHangRepository,
             IBaseRepository<NhanVien> nhanVienRepository,
@@ -186,7 +201,7 @@ namespace API.Services.Implementations
             _diaChiRepository = diaChiRepository;
             _vnPayService = vnPayService;
             _emailService = emailService;
-            _transactionHelper = new TransactionHelper(_hoaDonRepository, _hoaDonChiTietRepository, _sanPhamChiTietRepository);
+            _transactionHelper = new TransactionHelper(_hoaDonRepository, _hoaDonChiTietRepository, _sanPhamChiTietRepository, khuyenMaiServices);
             _logger = logger;
         }
 
@@ -2018,6 +2033,7 @@ namespace API.Services.Implementations
                     return (false, "Không thể hủy đơn hàng ở trạng thái hiện tại");
 
                 hoaDon.ly_do_huy_don_hang = lyDo;
+
                 if (id_nhan_vien_xu_ly.HasValue)
                     hoaDon.id_nhan_vien_xu_ly = id_nhan_vien_xu_ly;
 
