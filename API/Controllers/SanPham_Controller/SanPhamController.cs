@@ -9,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
+using API.DbConects.Entities.Entities_Khuyen_Mai;
 
 namespace API.Controllers.SanPham_Controller
 {
@@ -24,8 +25,10 @@ namespace API.Controllers.SanPham_Controller
         private readonly IBaseService<HoaDonChiTiet> _hoaDonChiTietServices;
         private readonly IBaseService<KichCo> _kichCoServices;
         private readonly IJwtServices _jwtServices;
+        private readonly IBaseService<SanPhamChiTietGiamGia> _sanPhamChiTietGiamGiaServices;
+        private readonly IBaseService<GiamGia> _giamGiaServices;
 
-        public SanPhamController(ISanPhamService sanPhamServices, IBaseService<SanPhamChiTiet> sanPhamChiTietServices, IBaseService<HinhAnh> hinhAnhServices, IBaseService<HinhAnhSanPhamChiTiet> hinhAnhSanPhamChiTietServices, IBaseService<MauSac> mauSacServices, IBaseService<KichCo> kichCoServices, IJwtServices jwtServices, IBaseService<HoaDonChiTiet> hoaDonChiTietServices)
+        public SanPhamController(ISanPhamService sanPhamServices, IBaseService<SanPhamChiTiet> sanPhamChiTietServices, IBaseService<HinhAnh> hinhAnhServices, IBaseService<HinhAnhSanPhamChiTiet> hinhAnhSanPhamChiTietServices, IBaseService<MauSac> mauSacServices, IBaseService<KichCo> kichCoServices, IJwtServices jwtServices, IBaseService<HoaDonChiTiet> hoaDonChiTietServices, IBaseService<SanPhamChiTietGiamGia> sanPhamChiTietGiamGiaServices, IBaseService<GiamGia> giamGiaServices)
         {
             _sanPhamServices = sanPhamServices;
             _sanPhamChiTietServices = sanPhamChiTietServices;
@@ -35,6 +38,8 @@ namespace API.Controllers.SanPham_Controller
             _kichCoServices = kichCoServices;
             _jwtServices = jwtServices;
             _hoaDonChiTietServices = hoaDonChiTietServices;
+            _sanPhamChiTietGiamGiaServices = sanPhamChiTietGiamGiaServices;
+            _giamGiaServices = giamGiaServices;
         }
 
         [HttpPost("lay-danh-sach-san-pham-admin-dto")]
@@ -219,18 +224,28 @@ namespace API.Controllers.SanPham_Controller
         {
             if (sanPhamDTO.sanPhamChiTiets == null || sanPhamDTO.sanPhamChiTiets.Count == 0)
                 return BadRequest("Yêu cầu nhập sản phẩm chi tiết");
-            if (sanPhamDTO.sanPhamChiTiets.Any(x => x.id_mau_sac == null))
-                return BadRequest("Yêu cầu nhập mã màu sắc");
-            if (sanPhamDTO.sanPhamChiTiets.Any(x => x.id_kich_co == null))
-                return BadRequest("Yêu cầu nhập mã kích cỡ");
-            if (sanPhamDTO.sanPhamChiTiets.Any(x => x.them_hinh_anh_spcts == null || x.them_hinh_anh_spcts.Count == 0))
-                return BadRequest("Yêu cầu chọn hình ảnh");
-            if (sanPhamDTO.sanPhamChiTiets.Any(x => x.so_luong <= 0))
-                return BadRequest("Yêu cầu nhập số lượng");
-            if (sanPhamDTO.sanPhamChiTiets.Any(x => x.gia_ban <= 0))
-                return BadRequest("Yêu cầu nhập giá bán");
-            if (sanPhamDTO.sanPhamChiTiets.Any(x => x.gia_nhap <= 0))
-                return BadRequest("Yêu cầu nhập giá nhập");
+
+            foreach (var spct in sanPhamDTO.sanPhamChiTiets)
+            {
+                var mauSac = await _mauSacServices.GetByIdAsync(spct.id_mau_sac);
+                var kichCo = await _kichCoServices.GetByIdAsync(spct.id_kich_co);
+                var thongTinChiTiet = $"(Màu sắc: {mauSac?.ten_mau_sac}, Kích cỡ: {kichCo?.ten_kich_co})";
+
+                if (spct.id_mau_sac == null)
+                    return BadRequest($"Yêu cầu nhập mã màu sắc cho sản phẩm chi tiết {thongTinChiTiet}");
+                if (spct.id_kich_co == null)
+                    return BadRequest($"Yêu cầu nhập mã kích cỡ cho sản phẩm chi tiết {thongTinChiTiet}");
+                if (spct.them_hinh_anh_spcts == null || spct.them_hinh_anh_spcts.Count == 0)
+                    return BadRequest($"Yêu cầu chọn hình ảnh cho sản phẩm chi tiết {thongTinChiTiet}");
+                if (spct.so_luong <= 0)
+                    return BadRequest($"Yêu cầu nhập số lượng lớn hơn 0 cho sản phẩm chi tiết {thongTinChiTiet}");
+                if (spct.gia_ban <= 0)
+                    return BadRequest($"Yêu cầu nhập giá bán lớn hơn 0 cho sản phẩm chi tiết {thongTinChiTiet}");
+                if (spct.gia_nhap <= 0)
+                    return BadRequest($"Yêu cầu nhập giá nhập lớn hơn 0 cho sản phẩm chi tiết {thongTinChiTiet}");
+                if (spct.gia_ban < spct.gia_nhap)
+                    return BadRequest($"Giá bán ({spct.gia_ban:N0}đ) phải lớn hơn hoặc bằng giá nhập ({spct.gia_nhap:N0}đ) cho sản phẩm chi tiết {thongTinChiTiet}");
+            }
 
             return null;
         }
@@ -434,11 +449,18 @@ namespace API.Controllers.SanPham_Controller
                             ngay_tao = DateTime.Now
                         };
 
-                        if (spct.id_giam_gia != null && spct.id_giam_gia != "")
-                            sanPhamChiTiet.id_giam_gia = Guid.Parse(spct.id_giam_gia);
-
                         var chiTietResult = await _sanPhamChiTietServices.CreateAsync(sanPhamChiTiet);
                         if (!chiTietResult) return false;
+
+                        // Thêm giảm giá nếu có
+                        if (spct.id_giam_gia != null && spct.id_giam_gia.Any())
+                        {
+                            var themGiamGiaResult = await ThemGiamGiaChoSanPhamChiTiet(sanPhamChiTiet.id_san_pham_chi_tiet, spct.id_giam_gia);
+                            if (!themGiamGiaResult)
+                            {
+                                throw new InvalidOperationException("Không thể thêm giảm giá cho sản phẩm chi tiết do trùng thời gian với giảm giá khác");
+                            }
+                        }
 
                         // Lưu hình ảnh cho sản phẩm chi tiết
                         var saveHinhAnhResult = await SaveHinhAnhSanPhamChiTiet(spct.them_hinh_anh_spcts, sanPhamChiTiet.id_san_pham_chi_tiet, sanPham.ma_san_pham, spct.id_mau_sac);
@@ -494,18 +516,31 @@ namespace API.Controllers.SanPham_Controller
         private async Task<IActionResult> ValidateUpdateSanPhamChiTiet(SuaSanPhamAdminDTO sanPhamDTO)
         {
             if (sanPhamDTO.sanPhamChiTiets == null || !sanPhamDTO.sanPhamChiTiets.Any())
-                return BadRequest("Yêu cầu nhập sản phẩm chi tiết");
+                return BadRequest("Danh sách sản phẩm chi tiết không được để trống");
 
             foreach (var spct in sanPhamDTO.sanPhamChiTiets)
             {
-                if (spct.so_luong < 0)
-                    return BadRequest("Số lượng không được nhỏ hơn 0");
+                if (spct.id_mau_sac == Guid.Empty || spct.id_kich_co == Guid.Empty)
+                    continue;
+
+                var mauSac = await _mauSacServices.GetByIdAsync(spct.id_mau_sac);
+                var kichCo = await _kichCoServices.GetByIdAsync(spct.id_kich_co);
+                var thongTinChiTiet = $"(Màu sắc: {mauSac?.ten_mau_sac}, Kích cỡ: {kichCo?.ten_kich_co})";
+
+                if (spct.so_luong <= 0)
+                    return BadRequest($"Số lượng sản phẩm chi tiết {thongTinChiTiet} phải lớn hơn 0");
+
                 if (spct.gia_ban <= 0)
-                    return BadRequest("Giá bán phải lớn hơn 0");
+                    return BadRequest($"Giá bán sản phẩm chi tiết {thongTinChiTiet} phải lớn hơn 0");
+
                 if (spct.gia_nhap <= 0)
-                    return BadRequest("Giá nhập phải lớn hơn 0");
+                    return BadRequest($"Giá nhập sản phẩm chi tiết {thongTinChiTiet} phải lớn hơn 0");
+
+                if (spct.gia_ban < spct.gia_nhap)
+                    return BadRequest($"Giá bán ({spct.gia_ban:N0}đ) phải lớn hơn hoặc bằng giá nhập ({spct.gia_nhap:N0}đ) cho sản phẩm chi tiết {thongTinChiTiet}");
+
                 if (string.IsNullOrEmpty(spct.trang_thai))
-                    return BadRequest("Yêu cầu nhập trạng thái cho sản phẩm chi tiết");
+                    return BadRequest($"Yêu cầu nhập trạng thái cho sản phẩm chi tiết {thongTinChiTiet}");
             }
 
             return null;
@@ -633,119 +668,181 @@ namespace API.Controllers.SanPham_Controller
                 validateResult = await ValidateUpdateHinhAnh(sanPhamDTO);
                 if (validateResult != null) return validateResult;
 
-                var result = await _sanPhamServices.ExecuteInTransactionAsync(async () =>
+                var result = await UpdateSanPham(id, sanPhamDTO);
+                if (result)
                 {
-                    // Lấy sản phẩm hiện tại với chi tiết và hình ảnh
-                    var existingSanPham = await _sanPhamServices.GetByIdWithIncludeAsync(id,
-                        q => q.Include(sp => sp.SanPhamChiTiets)
-                            .ThenInclude(spct => spct.HinhAnhSanPhamChiTiets)
-                                .ThenInclude(ha => ha.HinhAnhs));
-
-                    if (existingSanPham == null)
-                        return false;
-
-                    // Cập nhật thông tin sản phẩm
-                    existingSanPham.ten_san_pham = sanPhamDTO.ten_san_pham;
-                    existingSanPham.mo_ta = sanPhamDTO.mo_ta;
-                    existingSanPham.id_kieu_dang = Guid.Parse(sanPhamDTO.id_kieu_dang);
-                    existingSanPham.id_chat_lieu = Guid.Parse(sanPhamDTO.id_chat_lieu);
-                    existingSanPham.id_thuong_hieu = Guid.Parse(sanPhamDTO.id_thuong_hieu);
-                    existingSanPham.id_xuat_xu = Guid.Parse(sanPhamDTO.id_xuat_xu);
-                    existingSanPham.id_danh_muc = Guid.Parse(sanPhamDTO.id_danh_muc);
-                    existingSanPham.trang_thai = sanPhamDTO.trang_thai;
-
-                    // Xử lý ảnh mặc định mới nếu có
-                    if (!string.IsNullOrEmpty(sanPhamDTO.url_anh_mac_dinh))
-                    {
-                        var oldDefaultImage = await _hinhAnhServices.GetByIdAsync(existingSanPham.id_anh_mac_dinh.Value);
-                        if (oldDefaultImage != null)
-                        {
-                            await DeleteHinhAnh(oldDefaultImage);
-                        }
-
-                        var hinhanhMacDinh = await SaveHinhAnh(sanPhamDTO.url_anh_mac_dinh, "Image-" + existingSanPham.ma_san_pham, Path.Combine("wwwroot", "images", "products"));
-                        var hinhAnhSanPhamResult = await _hinhAnhServices.CreateAsync(hinhanhMacDinh);
-                        if (!hinhAnhSanPhamResult) return false;
-                        existingSanPham.id_anh_mac_dinh = hinhanhMacDinh.id_hinh_anh;
-                    }
-
-                    await _sanPhamServices.UpdateAsync(existingSanPham);
-
-                    // Xử lý cập nhật chi tiết sản phẩm
-                    if (sanPhamDTO.sanPhamChiTiets != null)
-                    {
-                        foreach (var spctDTO in sanPhamDTO.sanPhamChiTiets)
-                        {
-                            var existingChiTiet = existingSanPham.SanPhamChiTiets
-                                .FirstOrDefault(spct => spct.id_san_pham_chi_tiet == spctDTO.id_san_pham_chi_tiet);
-
-                            if (existingChiTiet != null)
-                            {
-                                // Cập nhật thông tin chi tiết
-                                existingChiTiet.so_luong = spctDTO.so_luong;
-                                existingChiTiet.gia_ban = spctDTO.gia_ban;
-                                existingChiTiet.gia_nhap = spctDTO.gia_nhap;
-                                existingChiTiet.trang_thai = spctDTO.trang_thai;
-                                if (spctDTO.id_giam_gia != null && spctDTO.id_giam_gia != "")
-                                    existingChiTiet.id_giam_gia = Guid.Parse(spctDTO.id_giam_gia);
-                                await _sanPhamChiTietServices.UpdateAsync(existingChiTiet);
-
-                                // Cập nhật hình ảnh
-                                var updateHinhAnhResult = await UpdateHinhAnhSanPhamChiTiet(
-                                    existingChiTiet,
-                                    spctDTO.them_hinh_anh_spcts,
-                                    existingSanPham.ma_san_pham,
-                                    spctDTO.id_mau_sac);
-                                if (!updateHinhAnhResult) return false;
-                            }
-                            else
-                            {
-                                // Thêm sản phẩm chi tiết mới
-                                var sanPhamChiTiet = new SanPhamChiTiet
-                                {
-                                    id_san_pham_chi_tiet = Guid.NewGuid(),
-                                    ma_san_pham_chi_tiet = $"{existingSanPham.ma_san_pham}-{RemoveDiacriticsAndClean(_mauSacServices.GetByIdAsync(spctDTO.id_mau_sac).Result.ten_mau_sac).ToLower()}-{RemoveDiacriticsAndClean(_kichCoServices.GetByIdAsync(spctDTO.id_kich_co).Result.ten_kich_co).ToLower()}",
-                                    id_san_pham = existingSanPham.id_san_pham,
-                                    id_mau_sac = spctDTO.id_mau_sac,
-                                    id_kich_co = spctDTO.id_kich_co,
-                                    so_luong = spctDTO.so_luong,
-                                    gia_ban = spctDTO.gia_ban,
-                                    gia_nhap = spctDTO.gia_nhap,
-                                    trang_thai = "HoatDong",
-                                    id_nguoi_tao = (Guid)GetIdNhanVien(),
-                                    ngay_tao = DateTime.Now
-                                };
-
-                                if (spctDTO.id_giam_gia != null && spctDTO.id_giam_gia != "")
-                                    sanPhamChiTiet.id_giam_gia = Guid.Parse(spctDTO.id_giam_gia);
-
-                                var chiTietResult = await _sanPhamChiTietServices.CreateAsync(sanPhamChiTiet);
-                                if (!chiTietResult) return false;
-
-                                // Thêm hình ảnh cho sản phẩm chi tiết mới
-                                var saveHinhAnhResult = await SaveHinhAnhSanPhamChiTiet(
-                                    spctDTO.them_hinh_anh_spcts,
-                                    sanPhamChiTiet.id_san_pham_chi_tiet,
-                                    existingSanPham.ma_san_pham,
-                                    spctDTO.id_mau_sac);
-                                if (!saveHinhAnhResult) return false;
-                            }
-                        }
-                    }
-
-                    return true;
-                });
-
-                if (!result)
-                    return BadRequest("Đã có lỗi xảy ra khi sửa sản phẩm");
-
-                return Ok("Cập nhật sản phẩm thành công");
+                    return Ok("Cập nhật sản phẩm thành công");
+                }
+                return BadRequest("Cập nhật sản phẩm thất bại");
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(ex.Message);
             }
             catch (Exception ex)
             {
-                return BadRequest($"Đã có lỗi xảy ra: {ex.Message}");
+                return BadRequest($"Đã xảy ra lỗi: {ex.Message}");
             }
         }
+
+        private async Task<bool> UpdateSanPham(Guid id, SuaSanPhamAdminDTO sanPhamDTO)
+        {
+            try
+            {
+                // Lấy sản phẩm hiện tại với chi tiết và hình ảnh
+                var existingSanPham = await _sanPhamServices.GetByIdWithIncludeAsync(id,
+                    q => q.Include(sp => sp.SanPhamChiTiets)
+                        .ThenInclude(spct => spct.HinhAnhSanPhamChiTiets)
+                            .ThenInclude(ha => ha.HinhAnhs));
+
+                if (existingSanPham == null)
+                    return false;
+
+                // Cập nhật thông tin sản phẩm
+                existingSanPham.ten_san_pham = sanPhamDTO.ten_san_pham;
+                existingSanPham.mo_ta = sanPhamDTO.mo_ta;
+                existingSanPham.id_kieu_dang = Guid.Parse(sanPhamDTO.id_kieu_dang);
+                existingSanPham.id_chat_lieu = Guid.Parse(sanPhamDTO.id_chat_lieu);
+                existingSanPham.id_thuong_hieu = Guid.Parse(sanPhamDTO.id_thuong_hieu);
+                existingSanPham.id_xuat_xu = Guid.Parse(sanPhamDTO.id_xuat_xu);
+                existingSanPham.id_danh_muc = Guid.Parse(sanPhamDTO.id_danh_muc);
+                existingSanPham.trang_thai = sanPhamDTO.trang_thai;
+
+                // Xử lý ảnh mặc định mới nếu có
+                if (!string.IsNullOrEmpty(sanPhamDTO.url_anh_mac_dinh))
+                {
+                    var oldDefaultImage = await _hinhAnhServices.GetByIdAsync(existingSanPham.id_anh_mac_dinh.Value);
+                    if (oldDefaultImage != null)
+                    {
+                        await DeleteHinhAnh(oldDefaultImage);
+                    }
+
+                    var hinhanhMacDinh = await SaveHinhAnh(sanPhamDTO.url_anh_mac_dinh, "Image-" + existingSanPham.ma_san_pham, Path.Combine("wwwroot", "images", "products"));
+                    var hinhAnhSanPhamResult = await _hinhAnhServices.CreateAsync(hinhanhMacDinh);
+                    if (!hinhAnhSanPhamResult) return false;
+                    existingSanPham.id_anh_mac_dinh = hinhanhMacDinh.id_hinh_anh;
+                }
+
+                await _sanPhamServices.UpdateAsync(existingSanPham);
+
+                // Xử lý cập nhật chi tiết sản phẩm
+                if (sanPhamDTO.sanPhamChiTiets != null)
+                {
+                    foreach (var spctDTO in sanPhamDTO.sanPhamChiTiets)
+                    {
+                        var existingChiTiet = existingSanPham.SanPhamChiTiets
+                            .FirstOrDefault(spct => spct.id_san_pham_chi_tiet == spctDTO.id_san_pham_chi_tiet);
+
+                        if (existingChiTiet != null)
+                        {
+                            // Cập nhật thông tin chi tiết
+                            existingChiTiet.so_luong = spctDTO.so_luong;
+                            existingChiTiet.gia_ban = spctDTO.gia_ban;
+                            existingChiTiet.gia_nhap = spctDTO.gia_nhap;
+                            existingChiTiet.trang_thai = spctDTO.trang_thai;
+                            await _sanPhamChiTietServices.UpdateAsync(existingChiTiet);
+
+                            // Cập nhật giảm giá
+                            if (spctDTO.id_giam_gia != null)
+                            {
+                                // Lấy danh sách giảm giá hiện tại
+                                var giamGiaHienTai = await _sanPhamChiTietGiamGiaServices.GetByConditionWithIncludeAsync(
+                                    x => x.id_san_pham_chi_tiet == existingChiTiet.id_san_pham_chi_tiet,
+                                    q => q.Include(gg => gg.GiamGia));
+
+                                // Xóa các giảm giá không còn trong danh sách mới
+                                foreach (var giamGia in giamGiaHienTai)
+                                {
+                                    if (!spctDTO.id_giam_gia.Contains(giamGia.id_giam_gia.ToString()))
+                                    {
+                                        await _sanPhamChiTietGiamGiaServices.DeleteAsync(giamGia.id);
+                                    }
+                                }
+
+                                // Lọc ra các giảm giá mới (chưa có trong danh sách hiện tại)
+                                var idGiamGiaHienTai = giamGiaHienTai.Select(x => x.id_giam_gia.ToString()).ToList();
+                                var idGiamGiaMoi = spctDTO.id_giam_gia.Where(x => !idGiamGiaHienTai.Contains(x)).ToList();
+
+                                // Thêm giảm giá mới nếu có
+                                if (idGiamGiaMoi.Any())
+                                {
+                                    var themGiamGiaResult = await ThemGiamGiaChoSanPhamChiTiet(existingChiTiet.id_san_pham_chi_tiet, idGiamGiaMoi);
+                                    if (!themGiamGiaResult)
+                                    {
+                                        throw new InvalidOperationException($"Không thể thêm giảm giá cho sản phẩm chi tiết {existingChiTiet.ma_san_pham_chi_tiet} do trùng thời gian với giảm giá khác");
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                // Nếu không có giảm giá mới, xóa tất cả giảm giá hiện tại
+                                var giamGiaHienTai = await _sanPhamChiTietGiamGiaServices.GetByConditionAsync(
+                                    x => x.id_san_pham_chi_tiet == existingChiTiet.id_san_pham_chi_tiet);
+
+                                foreach (var giamGia in giamGiaHienTai)
+                                {
+                                    await _sanPhamChiTietGiamGiaServices.DeleteAsync(giamGia.id);
+                                }
+                            }
+
+                            // Cập nhật hình ảnh
+                            var updateHinhAnhResult = await UpdateHinhAnhSanPhamChiTiet(
+                                existingChiTiet,
+                                spctDTO.them_hinh_anh_spcts,
+                                existingSanPham.ma_san_pham,
+                                spctDTO.id_mau_sac);
+                            if (!updateHinhAnhResult) return false;
+                        }
+                        else
+                        {
+                            // Thêm sản phẩm chi tiết mới
+                            var sanPhamChiTiet = new SanPhamChiTiet
+                            {
+                                id_san_pham_chi_tiet = Guid.NewGuid(),
+                                ma_san_pham_chi_tiet = $"{existingSanPham.ma_san_pham}-{RemoveDiacriticsAndClean(_mauSacServices.GetByIdAsync(spctDTO.id_mau_sac).Result.ten_mau_sac).ToLower()}-{RemoveDiacriticsAndClean(_kichCoServices.GetByIdAsync(spctDTO.id_kich_co).Result.ten_kich_co).ToLower()}",
+                                id_san_pham = existingSanPham.id_san_pham,
+                                id_mau_sac = spctDTO.id_mau_sac,
+                                id_kich_co = spctDTO.id_kich_co,
+                                so_luong = spctDTO.so_luong,
+                                gia_ban = spctDTO.gia_ban,
+                                gia_nhap = spctDTO.gia_nhap,
+                                trang_thai = "HoatDong",
+                                id_nguoi_tao = (Guid)GetIdNhanVien(),
+                                ngay_tao = DateTime.Now
+                            };
+
+                            var chiTietResult = await _sanPhamChiTietServices.CreateAsync(sanPhamChiTiet);
+                            if (!chiTietResult) return false;
+
+                            // Thêm giảm giá nếu có
+                            if (spctDTO.id_giam_gia != null && spctDTO.id_giam_gia.Any())
+                            {
+                                var themGiamGiaResult = await ThemGiamGiaChoSanPhamChiTiet(sanPhamChiTiet.id_san_pham_chi_tiet, spctDTO.id_giam_gia);
+                                if (!themGiamGiaResult)
+                                {
+                                    throw new InvalidOperationException($"Không thể thêm giảm giá cho sản phẩm chi tiết {sanPhamChiTiet.ma_san_pham_chi_tiet} do trùng thời gian với giảm giá khác");
+                                }
+                            }
+
+                            // Thêm hình ảnh cho sản phẩm chi tiết mới
+                            var saveHinhAnhResult = await SaveHinhAnhSanPhamChiTiet(
+                                spctDTO.them_hinh_anh_spcts,
+                                sanPhamChiTiet.id_san_pham_chi_tiet,
+                                existingSanPham.ma_san_pham,
+                                spctDTO.id_mau_sac);
+                            if (!saveHinhAnhResult) return false;
+                        }
+                    }
+                }
+
+                return true;
+            }
+            catch (Exception)
+            {
+                throw;
+            }
+        }
+
         [HttpDelete("xoa-san-pham")]
         [Authorize(Roles = "Admin,NhanVien")]
         public async Task<IActionResult> Delete(Guid id)
@@ -1026,11 +1123,15 @@ namespace API.Controllers.SanPham_Controller
                 var allSanPhams = await _sanPhamServices.GetAllSanPhamAdminDTOAsync();
                 // Sắp xếp theo ngày tạo giảm dần
                 allSanPhams = allSanPhams.OrderByDescending(sp => sp.ngay_tao).ToList();
+                var now = DateTime.Now;
                 // Lọc sản phẩm có trạng thái HoatDong và có ít nhất một sản phẩm chi tiết HoatDong
                 allSanPhams = allSanPhams.Where(sp =>
                     sp.trang_thai == "HoatDong" &&
                     sp.sanPhamChiTiets != null &&
-                    sp.sanPhamChiTiets.Any(spct => spct.trang_thai == "HoatDong" && spct.so_luong > 0)
+                    sp.sanPhamChiTiets.Any(spct =>
+                        spct.trang_thai == "HoatDong" &&
+                        spct.so_luong > 0
+                    )
                 ).ToList();
 
 
@@ -1182,8 +1283,22 @@ namespace API.Controllers.SanPham_Controller
                 // Lọc chỉ lấy các sản phẩm chi tiết có trạng thái HoatDong 
                 if (sanPham.sanPhamChiTiets != null)
                 {
+                    var now = DateTime.Now;
                     sanPham.sanPhamChiTiets = sanPham.sanPhamChiTiets
                         .Where(spct => spct.trang_thai == "HoatDong")
+                        .Select(spct =>
+                        {
+                            // Lấy giảm giá đang hoạt động
+                            if (spct.giamGias != null)
+                            {
+                                spct.giamGias = spct.giamGias
+                                    .Where(gg => gg.trang_thai == "HoatDong" &&
+                                               gg.thoi_gian_bat_dau <= now &&
+                                               gg.thoi_gian_ket_thuc >= now)
+                                    .ToList();
+                            }
+                            return spct;
+                        })
                         .ToList();
 
                     // Nếu không còn sản phẩm chi tiết nào hoạt động
@@ -1286,6 +1401,124 @@ namespace API.Controllers.SanPham_Controller
             catch (Exception ex)
             {
                 return BadRequest($"Đã có lỗi xảy ra: {ex.Message}");
+            }
+        }
+
+        private async Task<bool> KiemTraTrungThoiGianGiamGia(Guid idSanPhamChiTiet, string idGiamGia)
+        {
+            try
+            {
+                // Lấy thông tin giảm giá mới
+                var giamGiaMoi = await _giamGiaServices.GetByIdAsync(Guid.Parse(idGiamGia));
+                if (giamGiaMoi == null) return false;
+
+                // Lấy danh sách giảm giá hiện tại của sản phẩm chi tiết
+                var giamGiaHienTai = await _sanPhamChiTietGiamGiaServices.GetByConditionWithIncludeAsync(
+                    x => x.id_san_pham_chi_tiet == idSanPhamChiTiet,
+                    q => q.Include(gg => gg.GiamGia));
+
+                foreach (var giamGia in giamGiaHienTai)
+                {
+                    // Kiểm tra trùng thời gian
+                    if (giamGia.GiamGia.trang_thai == "HoatDong" &&
+                        ((giamGiaMoi.thoi_gian_bat_dau <= giamGia.GiamGia.thoi_gian_ket_thuc &&
+                          giamGiaMoi.thoi_gian_ket_thuc >= giamGia.GiamGia.thoi_gian_bat_dau) ||
+                         (giamGia.GiamGia.thoi_gian_bat_dau <= giamGiaMoi.thoi_gian_ket_thuc &&
+                          giamGia.GiamGia.thoi_gian_ket_thuc >= giamGiaMoi.thoi_gian_bat_dau)))
+                    {
+                        return true; // Có trùng thời gian
+                    }
+                }
+
+                return false; // Không trùng thời gian
+            }
+            catch
+            {
+                return true; // Nếu có lỗi, coi như bị trùng để đảm bảo an toàn
+            }
+        }
+
+        private async Task<bool> ThemGiamGiaChoSanPhamChiTiet(Guid idSanPhamChiTiet, List<string> idGiamGias)
+        {
+            try
+            {
+                if (idGiamGias == null || !idGiamGias.Any()) return true;
+
+                // Kiểm tra trùng thời gian giữa các mã giảm giá mới
+                for (int i = 0; i < idGiamGias.Count; i++)
+                {
+                    for (int j = i + 1; j < idGiamGias.Count; j++)
+                    {
+                        var giamGia1 = await _giamGiaServices.GetByIdAsync(Guid.Parse(idGiamGias[i]));
+                        var giamGia2 = await _giamGiaServices.GetByIdAsync(Guid.Parse(idGiamGias[j]));
+
+                        if (giamGia1 != null && giamGia2 != null && giamGia1.trang_thai == "HoatDong" && giamGia2.trang_thai == "HoatDong")
+                        {
+                            if ((giamGia1.thoi_gian_bat_dau <= giamGia2.thoi_gian_ket_thuc &&
+                                 giamGia1.thoi_gian_ket_thuc >= giamGia2.thoi_gian_bat_dau) ||
+                                (giamGia2.thoi_gian_bat_dau <= giamGia1.thoi_gian_ket_thuc &&
+                                 giamGia2.thoi_gian_ket_thuc >= giamGia1.thoi_gian_bat_dau))
+                            {
+                                return false; // Có trùng thời gian giữa các mã giảm giá mới
+                            }
+                        }
+                    }
+                }
+
+                // Lấy danh sách giảm giá hiện tại của sản phẩm chi tiết
+                var giamGiaHienTai = await _sanPhamChiTietGiamGiaServices.GetByConditionWithIncludeAsync(
+                    x => x.id_san_pham_chi_tiet == idSanPhamChiTiet,
+                    q => q.Include(gg => gg.GiamGia));
+
+                // Kiểm tra trùng thời gian với các giảm giá hiện tại
+                foreach (var idGiamGia in idGiamGias)
+                {
+                    var giamGiaMoi = await _giamGiaServices.GetByIdAsync(Guid.Parse(idGiamGia));
+                    if (giamGiaMoi == null || giamGiaMoi.trang_thai != "HoatDong") continue;
+
+                    foreach (var giamGia in giamGiaHienTai)
+                    {
+                        if (giamGia.GiamGia.trang_thai == "HoatDong" &&
+                            ((giamGiaMoi.thoi_gian_bat_dau <= giamGia.GiamGia.thoi_gian_ket_thuc &&
+                              giamGiaMoi.thoi_gian_ket_thuc >= giamGia.GiamGia.thoi_gian_bat_dau) ||
+                             (giamGia.GiamGia.thoi_gian_bat_dau <= giamGiaMoi.thoi_gian_ket_thuc &&
+                              giamGia.GiamGia.thoi_gian_ket_thuc >= giamGiaMoi.thoi_gian_bat_dau)))
+                        {
+                            return false; // Có trùng thời gian với giảm giá hiện tại
+                        }
+                    }
+                }
+                // Kiểm tra xem giảm giá đã được áp dụng cho sản phẩm chi tiết chưa
+                foreach (var idGiamGia in idGiamGias)
+                {
+                    var existingGiamGia = await _sanPhamChiTietGiamGiaServices.GetByConditionAsync(
+                        x => x.id_san_pham_chi_tiet == idSanPhamChiTiet &&
+                             x.id_giam_gia == Guid.Parse(idGiamGia));
+
+                    if (existingGiamGia.Any())
+                    {
+                        return false; // Đã tồn tại giảm giá này cho sản phẩm chi tiết
+                    }
+                }
+
+                // Thêm các giảm giá mới
+                foreach (var idGiamGia in idGiamGias)
+                {
+                    var sanPhamChiTietGiamGia = new SanPhamChiTietGiamGia
+                    {
+                        id = Guid.NewGuid(),
+                        id_san_pham_chi_tiet = idSanPhamChiTiet,
+                        id_giam_gia = Guid.Parse(idGiamGia)
+                    };
+                    var result = await _sanPhamChiTietGiamGiaServices.CreateAsync(sanPhamChiTietGiamGia);
+                    if (!result) return false;
+                }
+
+                return true;
+            }
+            catch
+            {
+                return false;
             }
         }
 

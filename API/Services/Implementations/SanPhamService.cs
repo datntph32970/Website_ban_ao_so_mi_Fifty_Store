@@ -20,7 +20,8 @@ namespace API.Services.Implementations
         private readonly IBaseRepository<KhuyenMai> _khuyenMaiRepository;
         private readonly IThongKeService _thongKeService;
         private readonly IBaseRepository<SanPhamChiTiet> _sanPhamChiTietRepository;
-        public SanPhamService(IBaseRepository<SanPham> repository, IBaseRepository<SanPhamChiTiet> sanPhamChiTietRepository, IBaseRepository<GiamGia> giamGiaRepository, IBaseRepository<KhuyenMai> khuyenMaiRepository, IBaseRepository<HoaDon> hoaDonRepository, IThongKeService thongKeService) : base(repository)
+        private readonly IBaseRepository<SanPhamChiTietGiamGia> _sanPhamChiTietGiamGiaRepository;
+        public SanPhamService(IBaseRepository<SanPham> repository, IBaseRepository<SanPhamChiTiet> sanPhamChiTietRepository, IBaseRepository<GiamGia> giamGiaRepository, IBaseRepository<KhuyenMai> khuyenMaiRepository, IBaseRepository<HoaDon> hoaDonRepository, IThongKeService thongKeService, IBaseRepository<SanPhamChiTietGiamGia> sanPhamChiTietGiamGiaRepository) : base(repository)
         {
             _repository = repository;
             _sanPhamChiTietRepository = sanPhamChiTietRepository;
@@ -28,20 +29,30 @@ namespace API.Services.Implementations
             _khuyenMaiRepository = khuyenMaiRepository;
             _hoaDonRepository = hoaDonRepository;
             _thongKeService = thongKeService;
+            _sanPhamChiTietGiamGiaRepository = sanPhamChiTietGiamGiaRepository;
         }
         public async Task<List<SanPhamAdminDTO>> GetAllSanPhamAdminDTOAsync()
         {
             try
             {
                 await RemoveInvalidDiscountsAsync();
-                var result = await _repository.GetAllWithIncludeAsync(q => q.Include(s => s.DanhMuc)
-                                                               .Include(s => s.ThuongHieu)
-                                                               .Include(s => s.KieuDang)
-                                                               .Include(s => s.ChatLieu)
-                                                               .Include(s => s.XuatXu)
-                                                               .Include(s => s.anhMacDinh)
-                                                               .Include(s => s.SanPhamChiTiets)
-                                                               .ThenInclude(spct => spct.GiamGia));
+                var result = await _repository.GetAllWithIncludeAsync(q => q
+                                                                .Include(s => s.ThuongHieu)
+                                                                .Include(s => s.DanhMuc)
+                                                                .Include(s => s.KieuDang)
+                                                                .Include(s => s.ChatLieu)
+                                                                .Include(s => s.XuatXu)
+                                                                .Include(s => s.anhMacDinh)
+                                                                .Include(s => s.SanPhamChiTiets)
+                                                                .ThenInclude(spct => spct.SanPhamChiTietGiamGias)
+                                                                .ThenInclude(spctgg => spctgg.GiamGia)
+                                                                .Include(s => s.SanPhamChiTiets)
+                                                                .ThenInclude(spct => spct.MauSac)
+                                                                .Include(s => s.SanPhamChiTiets)
+                                                                .ThenInclude(spct => spct.HinhAnhSanPhamChiTiets)
+                                                                .ThenInclude(hasc => hasc.HinhAnhs)
+                                                                .Include(s => s.SanPhamChiTiets)
+                                                                .ThenInclude(spct => spct.KichCo));
 
                 var sanPhams = new List<SanPhamAdminDTO>();
                 foreach (var s in result)
@@ -61,17 +72,39 @@ namespace API.Services.Implementations
                             trang_thai = spct.trang_thai,
                             ngay_tao = spct.ngay_tao,
                             ngay_sua = spct.ngay_sua,
-                            giamGia = spct.GiamGia != null ? new GiamGiaAdminDTO
+                            giamGias = spct.SanPhamChiTietGiamGias != null && spct.SanPhamChiTietGiamGias.Any() ?
+                                spct.SanPhamChiTietGiamGias
+
+                                    .Select(spctgg => new GiamGiaAdminDTO
+                                    {
+                                        id_giam_gia = spctgg.GiamGia.id_giam_gia,
+                                        ma_giam_gia = spctgg.GiamGia.ma_giam_gia,
+                                        ten_giam_gia = spctgg.GiamGia.ten_giam_gia,
+                                        kieu_giam_gia = spctgg.GiamGia.kieu_giam_gia,
+                                        gia_tri_giam = spctgg.GiamGia.gia_tri_giam,
+                                        thoi_gian_bat_dau = spctgg.GiamGia.thoi_gian_bat_dau,
+                                        thoi_gian_ket_thuc = spctgg.GiamGia.thoi_gian_ket_thuc,
+                                        trang_thai = spctgg.GiamGia.trang_thai
+                                    })
+                                    .ToList() : null,
+                            mauSac = spct.MauSac != null ? new MauSacAdminDTO
                             {
-                                id_giam_gia = spct.GiamGia.id_giam_gia,
-                                ma_giam_gia = spct.GiamGia.ma_giam_gia,
-                                ten_giam_gia = spct.GiamGia.ten_giam_gia,
-                                kieu_giam_gia = spct.GiamGia.kieu_giam_gia,
-                                gia_tri_giam = spct.GiamGia.gia_tri_giam,
-                                thoi_gian_bat_dau = spct.GiamGia.thoi_gian_bat_dau,
-                                thoi_gian_ket_thuc = spct.GiamGia.thoi_gian_ket_thuc,
-                                trang_thai = spct.GiamGia.trang_thai
-                            } : null
+                                id_mau_sac = spct.MauSac.id_mau_sac,
+                                ma_mau_sac = spct.MauSac.ma_mau_sac,
+                                ten_mau_sac = spct.MauSac.ten_mau_sac
+                            } : null,
+                            kichCo = spct.KichCo != null ? new KichCoAdminDTO
+                            {
+                                id_kich_co = spct.KichCo.id_kich_co,
+                                ma_kich_co = spct.KichCo.ma_kich_co,
+                                ten_kich_co = spct.KichCo.ten_kich_co
+                            } : null,
+                            hinhAnhSanPhamChiTiets = spct.HinhAnhSanPhamChiTiets.Select(hasc => new HinhAnhSanPhamChiTietAdminDTO
+                            {
+                                id_hinh_anh = hasc.HinhAnhs.id_hinh_anh,
+                                hinh_anh_urls = hasc.HinhAnhs.url
+                            }).ToList()
+
                         });
                     }
 
@@ -136,23 +169,23 @@ namespace API.Services.Implementations
             await RemoveInvalidDiscountsAsync();
 
             // Load all data upfront in a single query
-            var result = await _repository.GetByIdWithIncludeAsync(id, q => q.Include(s => s.DanhMuc)
-                                                               .Include(s => s.ThuongHieu)
-                                                               .Include(s => s.ChatLieu)
-                                                               .Include(s => s.KieuDang)
-                                                               .Include(s => s.anhMacDinh)
-                                                               .Include(s => s.XuatXu)
-                                                               .Include(s => s.NguoiTao)
-                                                               .Include(s => s.NguoiSua)
-                                                               .Include(s => s.SanPhamChiTiets)
-                                                                   .ThenInclude(spct => spct.HinhAnhSanPhamChiTiets)
-                                                                       .ThenInclude(ha => ha.HinhAnhs)
-                                                               .Include(s => s.SanPhamChiTiets)
-                                                                   .ThenInclude(spct => spct.MauSac)
-                                                               .Include(s => s.SanPhamChiTiets)
-                                                                   .ThenInclude(spct => spct.KichCo)
-                                                               .Include(s => s.SanPhamChiTiets)
-                                                                   .ThenInclude(spct => spct.GiamGia));
+            var result = await _repository.GetByIdWithIncludeAsync(id, q => q
+                                                                .Include(s => s.ThuongHieu)
+                                                                .Include(s => s.DanhMuc)
+                                                                .Include(s => s.KieuDang)
+                                                                .Include(s => s.ChatLieu)
+                                                                .Include(s => s.XuatXu)
+                                                                .Include(s => s.anhMacDinh)
+                                                                .Include(s => s.SanPhamChiTiets)
+                                                                .ThenInclude(spct => spct.MauSac)
+                                                                .Include(s => s.SanPhamChiTiets)
+                                                                .ThenInclude(spct => spct.HinhAnhSanPhamChiTiets)
+                                                                .ThenInclude(hasc => hasc.HinhAnhs)
+                                                                .Include(s => s.SanPhamChiTiets)
+                                                                .ThenInclude(spct => spct.KichCo)
+                                                                .Include(s => s.SanPhamChiTiets)
+                                                                .ThenInclude(spct => spct.SanPhamChiTietGiamGias)
+                                                                .ThenInclude(spctgg => spctgg.GiamGia));
 
             if (result == null) return null;
 
@@ -241,17 +274,20 @@ namespace API.Services.Implementations
                         ma_kich_co = spct.KichCo.ma_kich_co,
                         ten_kich_co = spct.KichCo.ten_kich_co
                     },
-                    giamGia = spct.GiamGia != null ? new GiamGiaAdminDTO
-                    {
-                        id_giam_gia = spct.GiamGia.id_giam_gia,
-                        ma_giam_gia = spct.GiamGia.ma_giam_gia,
-                        ten_giam_gia = spct.GiamGia.ten_giam_gia,
-                        kieu_giam_gia = spct.GiamGia.kieu_giam_gia,
-                        gia_tri_giam = spct.GiamGia.gia_tri_giam,
-                        thoi_gian_bat_dau = spct.GiamGia.thoi_gian_bat_dau,
-                        thoi_gian_ket_thuc = spct.GiamGia.thoi_gian_ket_thuc,
-                        trang_thai = spct.GiamGia.trang_thai
-                    } : null
+                    giamGias = spct.SanPhamChiTietGiamGias != null && spct.SanPhamChiTietGiamGias.Any() ?
+                        spct.SanPhamChiTietGiamGias
+                            .Select(spctgg => new GiamGiaAdminDTO
+                            {
+                                id_giam_gia = spctgg.GiamGia.id_giam_gia,
+                                ma_giam_gia = spctgg.GiamGia.ma_giam_gia,
+                                ten_giam_gia = spctgg.GiamGia.ten_giam_gia,
+                                kieu_giam_gia = spctgg.GiamGia.kieu_giam_gia,
+                                gia_tri_giam = spctgg.GiamGia.gia_tri_giam,
+                                thoi_gian_bat_dau = spctgg.GiamGia.thoi_gian_bat_dau,
+                                thoi_gian_ket_thuc = spctgg.GiamGia.thoi_gian_ket_thuc,
+                                trang_thai = spctgg.GiamGia.trang_thai
+                            })
+                            .ToList() : null
                 }).ToList()
             };
 
@@ -359,17 +395,26 @@ namespace API.Services.Implementations
                             trang_thai = spct.trang_thai,
                             ngay_tao = spct.ngay_tao,
                             ngay_sua = spct.ngay_sua,
-                            giamGia = spct.GiamGia != null ? new GiamGiaAdminDTO
-                            {
-                                id_giam_gia = spct.GiamGia.id_giam_gia,
-                                ma_giam_gia = spct.GiamGia.ma_giam_gia,
-                                ten_giam_gia = spct.GiamGia.ten_giam_gia,
-                                kieu_giam_gia = spct.GiamGia.kieu_giam_gia,
-                                gia_tri_giam = spct.GiamGia.gia_tri_giam,
-                                thoi_gian_bat_dau = spct.GiamGia.thoi_gian_bat_dau,
-                                thoi_gian_ket_thuc = spct.GiamGia.thoi_gian_ket_thuc,
-                                trang_thai = spct.GiamGia.trang_thai
-                            } : null
+                            giamGias = spct.SanPhamChiTietGiamGias != null && spct.SanPhamChiTietGiamGias.Any() ?
+                                spct.SanPhamChiTietGiamGias
+                                    .Where(spctgg =>
+                                        spctgg.GiamGia != null &&
+                                        spctgg.GiamGia.trang_thai == "HoatDong" &&
+                                        spctgg.GiamGia.thoi_gian_bat_dau <= DateTime.Now &&
+                                        spctgg.GiamGia.thoi_gian_ket_thuc >= DateTime.Now &&
+                                        spctgg.GiamGia.so_luong_da_su_dung < spctgg.GiamGia.so_luong_toi_da)
+                                    .Select(spctgg => new GiamGiaAdminDTO
+                                    {
+                                        id_giam_gia = spctgg.GiamGia.id_giam_gia,
+                                        ma_giam_gia = spctgg.GiamGia.ma_giam_gia,
+                                        ten_giam_gia = spctgg.GiamGia.ten_giam_gia,
+                                        kieu_giam_gia = spctgg.GiamGia.kieu_giam_gia,
+                                        gia_tri_giam = spctgg.GiamGia.gia_tri_giam,
+                                        thoi_gian_bat_dau = spctgg.GiamGia.thoi_gian_bat_dau,
+                                        thoi_gian_ket_thuc = spctgg.GiamGia.thoi_gian_ket_thuc,
+                                        trang_thai = spctgg.GiamGia.trang_thai
+                                    })
+                                    .ToList() : null
                         });
                     }
 
@@ -415,20 +460,16 @@ namespace API.Services.Implementations
             {
                 var result = await _giamGiaRepository.ExecuteInTransactionAsync(async () =>
                 {
-                    var giamGias = await _giamGiaRepository.GetAllWithIncludeAsync(q => q.Include(gg => gg.SanPhamChiTiets));
+                    var giamGias = await _giamGiaRepository.GetAllWithIncludeAsync(q => q.Include(gg => gg.SanPhamChiTietGiamGias)
+                        .ThenInclude(spctgg => spctgg.SanPhamChiTiet));
                     foreach (var giamGia in giamGias)
                     {
                         if (giamGia.thoi_gian_ket_thuc < DateTime.Now || giamGia.so_luong_da_su_dung >= giamGia.so_luong_toi_da)
                         {
                             giamGia.trang_thai = "KhongHoatDong";
-                            foreach (var spct in giamGia.SanPhamChiTiets)
+                            foreach (var spctgg in giamGia.SanPhamChiTietGiamGias)
                             {
-                                spct.id_giam_gia = null;
-                                var updatespct = await _sanPhamChiTietRepository.UpdateAsync(spct);
-                                if (!updatespct)
-                                {
-                                    return false;
-                                }
+                                await _sanPhamChiTietGiamGiaRepository.DeleteAsync(spctgg.id);
                             }
                             var result = await _giamGiaRepository.UpdateAsync(giamGia);
                             if (!result)

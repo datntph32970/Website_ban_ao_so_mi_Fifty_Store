@@ -31,7 +31,7 @@ namespace API.DbConects.Entities.Entities_Hoa_Don
         public decimal thanh_tien { get; set; }
         public string? ghi_chu { get; set; }
         [Required(ErrorMessage = "Trạng thái không được để trống")]
-        [RegularExpression("^(ChoTaiQuay|DangChoXuLy|DangXuLy|DangGiaoHang|HetHang|DaThanhToan|ChuaThanhToan|DaHoanThanh|DaHuy|DaHoanTraMotPhan|DaHoanTraToanBo)$", ErrorMessage = "Trạng thái hóa đơn không hợp lệ")]
+        [RegularExpression("^(ChoTaiQuay|DangChoXuLy|DangXuLy|DangGiaoHang|HetHang|DaThanhToan|ChuaThanhToan|DaHoanThanh|DaHuy|DaNhanHang|DaHoanTraMotPhan|DaHoanTraToanBo)$", ErrorMessage = "Trạng thái hóa đơn không hợp lệ")]
         public string trang_thai { get; set; }
         [ForeignKey("NhanVienXuLy")]
         public Guid? id_nhan_vien_xu_ly { get; set; }

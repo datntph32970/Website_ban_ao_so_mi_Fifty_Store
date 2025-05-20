@@ -38,7 +38,7 @@ namespace API.DbConects.Entities.Entities_Khuyen_Mai
         [Required(ErrorMessage = "Mã người tạo không được để trống")]
         public Guid id_nguoi_tao { get; set; }
         public Guid? id_nguoi_cap_nhat { get; set; }
-        public virtual ICollection<SanPhamChiTiet> SanPhamChiTiets { get; set; }
+        public virtual ICollection<SanPhamChiTietGiamGia> SanPhamChiTietGiamGias { get; set; }
         [ForeignKey("id_nguoi_tao")]
         public virtual NhanVien? NguoiTao { get; set; }
         [ForeignKey("id_nguoi_cap_nhat")]

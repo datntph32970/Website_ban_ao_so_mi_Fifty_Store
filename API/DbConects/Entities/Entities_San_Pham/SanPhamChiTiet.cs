@@ -31,8 +31,6 @@ namespace API.DbConects.Entities.Entities_San_Pham
         public Guid id_kich_co { get; set; }
         [ForeignKey("MauSac")]
         public Guid id_mau_sac { get; set; }
-        [ForeignKey("GiamGia")]
-        public Guid? id_giam_gia { get; set; }
         public virtual SanPham? SanPham { get; set; }
         public virtual KichCo? KichCo { get; set; }
         public virtual MauSac? MauSac { get; set; }
@@ -43,6 +41,6 @@ namespace API.DbConects.Entities.Entities_San_Pham
         public virtual NhanVien? NguoiTao { get; set; }
         [ForeignKey("id_nguoi_sua")]
         public virtual NhanVien? NguoiSua { get; set; }
-        public virtual GiamGia? GiamGia { get; set; }
+        public virtual ICollection<SanPhamChiTietGiamGia>? SanPhamChiTietGiamGias { get; set; }
     }
 }

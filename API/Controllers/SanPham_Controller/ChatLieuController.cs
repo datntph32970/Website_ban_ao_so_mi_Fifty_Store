@@ -109,6 +109,15 @@ namespace API.Controllers.SanPham_Controller
             if (result) return Ok("Xóa chất liệu thành công");
             return BadRequest("Đã có lỗi khi xóa chất liệu");
         }
+
+        [HttpGet("active")]
+        public async Task<IActionResult> GetActiveMaterials()
+        {
+            var allMaterials = await _chatLieuServices.GetAllWithIncludeAsync(cl => cl.Include(c => c.SanPhams));
+            var activeMaterials = allMaterials.Where(c => c.trang_thai == "HoatDong").ToList();
+            return Ok(activeMaterials);
+        }
+
         private string TaoMaChatLieu()
         {
             var lastChatLieu = _chatLieuServices.GetAllAsync().Result.OrderByDescending(x => x.ma_chat_lieu).FirstOrDefault();

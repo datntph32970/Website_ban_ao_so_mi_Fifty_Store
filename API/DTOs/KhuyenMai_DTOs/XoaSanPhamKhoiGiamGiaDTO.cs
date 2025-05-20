@@ -5,6 +5,7 @@ namespace API.DTOs.KhuyenMai_DTOs
 {
     public class XoaGiamGiaKhoiSanPhamChiTietDTO
     {
+        public Guid id_giam_gia { get; set; }
         public List<string> san_pham_chi_tiet_ids { get; set; }
     }
 }

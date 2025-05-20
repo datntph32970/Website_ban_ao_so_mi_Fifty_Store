@@ -21,7 +21,7 @@ namespace API.Services.Implementations
         private readonly Dictionary<string, (DateTime ExpiryTime, object Data)> _cache = new();
         private const int CACHE_DURATION_MINUTES = 5;
         private static readonly string[] VALID_TRANG_THAI = new[] { "DaThanhToan", "DaHoanThanh" };
-        private static readonly string[] INVALID_TRANG_THAI_DON_HANG = new[] { "DaHuy", "HetHang", "DaHoanTraToanBo" };
+        private static readonly string[] INVALID_TRANG_THAI_DON_HANG = new[] { "DaHuy", "DaHoanTraToanBo" };
 
         public ThongKeService(IBaseRepository<HoaDon> hoaDonRepository, IBaseRepository<NhanVien> nhanVienRepository, IBaseRepository<DanhMuc> danhMucRepository, IBaseRepository<HoaDonChiTiet> hoaDonChiTietRepository, IBaseRepository<SanPham> sanPhamRepository, IBaseRepository<SanPhamChiTiet> sanPhamChiTietRepository)
         {
@@ -95,7 +95,7 @@ namespace API.Services.Implementations
                     Console.WriteLine($"- Hóa đơn {hd.ma_hoa_don} - {hd.trang_thai_hoa_don}: {hd.tong_tien_phai_thanh_toan:N0} VND");
                 }
 
-                var tongDoanhThu = hoaDon.Sum(hd => hd.tong_tien_phai_thanh_toan ?? 0);
+                var tongDoanhThu = hoaDon.Sum(hd => (hd.tong_tien_phai_thanh_toan ?? 0) - (hd.phi_van_chuyen ?? 0));
                 SetCache(cacheKey, tongDoanhThu);
                 Console.WriteLine($"- Tổng doanh thu: {tongDoanhThu:N0} VND");
 
@@ -115,7 +115,7 @@ namespace API.Services.Implementations
                 var hoaDon = await _hoaDonRepository.GetByConditionAsync(hd =>
                     hd.ngay_tao.Year == nam &&
                     VALID_TRANG_THAI.Contains(hd.trang_thai_hoa_don));
-                return hoaDon.Sum(hd => hd.tong_tien_phai_thanh_toan ?? 0);
+                return hoaDon.Sum(hd => (hd.tong_tien_phai_thanh_toan ?? 0) - (hd.phi_van_chuyen ?? 0));
             }
             catch (Exception ex)
             {
@@ -132,7 +132,7 @@ namespace API.Services.Implementations
                 var hoaDon = await _hoaDonRepository.GetByConditionAsync(hd =>
                     hd.ngay_tao.Date == dateTime.Date &&
                     VALID_TRANG_THAI.Contains(hd.trang_thai_hoa_don));
-                return hoaDon.Sum(hd => hd.tong_tien_phai_thanh_toan ?? 0);
+                return hoaDon.Sum(hd => (hd.tong_tien_phai_thanh_toan ?? 0) - (hd.phi_van_chuyen ?? 0));
             }
             catch (Exception ex)
             {
@@ -162,17 +162,7 @@ namespace API.Services.Implementations
                     hd.ngay_tao < endDate &&
                     VALID_TRANG_THAI.Contains(hd.trang_thai_hoa_don));
 
-                // Log chi tiết
-                Console.WriteLine($"Tuần {tuan}/{nam}:");
-                Console.WriteLine($"- Số hóa đơn hợp lệ: {hoaDon.Count()}");
-                foreach (var hd in hoaDon)
-                {
-                    Console.WriteLine($"- Hóa đơn {hd.ma_hoa_don} - {hd.trang_thai_hoa_don}:");
-                    Console.WriteLine($"  + Ngày tạo: {hd.ngay_tao:dd/MM/yyyy HH:mm:ss}");
-                    Console.WriteLine($"  + Tổng tiền: {hd.tong_tien_phai_thanh_toan:N0} VND");
-                }
-
-                var tongDoanhThu = hoaDon.Sum(hd => hd.tong_tien_phai_thanh_toan ?? 0);
+                var tongDoanhThu = hoaDon.Sum(hd => (hd.tong_tien_phai_thanh_toan ?? 0) - (hd.phi_van_chuyen ?? 0));
                 SetCache(cacheKey, tongDoanhThu);
 
                 Console.WriteLine($"- Tổng doanh thu: {tongDoanhThu:N0} VND");
@@ -269,7 +259,7 @@ namespace API.Services.Implementations
                     if (nv != null)
                     {
                         var tongTien = hoaDon.Where(hd => hd.id_nhan_vien_xu_ly == nhanVienId)
-                                           .Sum(hd => hd.tong_tien_phai_thanh_toan ?? 0);
+                                           .Sum(hd => (hd.tong_tien_phai_thanh_toan ?? 0) - (hd.phi_van_chuyen ?? 0));
                         result.Add((nv, tongTien));
                     }
                 }
@@ -295,7 +285,7 @@ namespace API.Services.Implementations
                     if (nv != null)
                     {
                         var tongTien = hoaDon.Where(hd => hd.id_nhan_vien_xu_ly == nhanVienId)
-                                           .Sum(hd => hd.tong_tien_phai_thanh_toan ?? 0);
+                                           .Sum(hd => (hd.tong_tien_phai_thanh_toan ?? 0) - (hd.phi_van_chuyen ?? 0));
                         result.Add((nv, tongTien));
                     }
                 }

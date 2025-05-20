@@ -322,6 +322,14 @@ namespace API.Controllers.KhuyenMai_Controller
             {
                 var now = DateTime.Now;
 
+                // Lấy thông tin khách hàng từ token nếu có
+                Guid? idKhachHang = null;
+                var token = HttpContext.Request.Headers["Authorization"].FirstOrDefault()?.Split(" ").Last();
+                if (token != null)
+                {
+                    idKhachHang = _jwtServices.GetIdKhachHangFromToken(token);
+                }
+
                 // Lấy tổng tiền hóa đơn nếu có id_hoa_don
                 decimal tongTienHoaDon = 0;
                 if (!string.IsNullOrEmpty(id_hoa_don))
@@ -346,10 +354,44 @@ namespace API.Controllers.KhuyenMai_Controller
                      km.gia_tri_don_hang_toi_thieu <= tongTienHoaDon)
                 );
 
-                // Lấy 10 khuyến mãi đầu tiên
-                var result = khuyenMais.Take(10).ToList();
+                // Nếu là khách hàng, loại bỏ các khuyến mãi đã sử dụng
+                if (idKhachHang.HasValue)
+                {
+                    var hoaDonKhachHang = await _hoaDonServices.GetByConditionAsync(hd =>
+                        hd.id_khach_hang == idKhachHang &&
+                        hd.id_khuyen_mai != null &&
+                        hd.trang_thai_hoa_don != "DaHuy");
 
-                return Ok(result);
+                    var khuyenMaiDaSuDung = hoaDonKhachHang.Select(hd => hd.id_khuyen_mai).ToList();
+                    khuyenMais = khuyenMais.Where(km => !khuyenMaiDaSuDung.Contains(km.id_khuyen_mai)).ToList();
+                }
+
+                // Tính toán và sắp xếp khuyến mãi theo giá trị thực tế
+                var khuyenMaisSapXep = khuyenMais
+                    .Select(km => new
+                    {
+                        KhuyenMai = km,
+                        GiaTriThucTe = km.kieu_khuyen_mai == "PhanTram"
+                            ? Math.Min(tongTienHoaDon * (decimal)km.gia_tri_giam / 100, (decimal)km.gia_tri_giam_toi_da)
+                            : Math.Min((decimal)km.gia_tri_giam, (decimal)km.gia_tri_giam_toi_da)
+                    })
+                    .OrderByDescending(x => x.GiaTriThucTe)
+                    .ThenBy(x => x.KhuyenMai.gia_tri_don_hang_toi_thieu)
+                    .Take(10)
+                    .Select(x => new
+                    {
+                        x.KhuyenMai,
+                        GiaTriThucTe = x.GiaTriThucTe,
+                        GiaTriHienThi = x.KhuyenMai.kieu_khuyen_mai == "PhanTram"
+                            ? $"{x.KhuyenMai.gia_tri_giam}% (Tối đa {x.KhuyenMai.gia_tri_giam_toi_da:N0} VNĐ)"
+                            : $"{x.KhuyenMai.gia_tri_giam:N0} VNĐ (Tối đa {x.KhuyenMai.gia_tri_giam_toi_da:N0} VNĐ)"
+                    });
+
+                return Ok(new
+                {
+                    tong_tien_hoa_don = tongTienHoaDon,
+                    khuyen_mais = khuyenMaisSapXep
+                });
             }
             catch (Exception ex)
             {

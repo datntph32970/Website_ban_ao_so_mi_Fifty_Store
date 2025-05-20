@@ -218,6 +218,12 @@ namespace API.Controllers.TaiKhoan_Controller
             if (taikhoan.ma_tai_khoan == "TK00000001")
                 return BadRequest("Tài khoản này là cố định không được cập nhật");
 
+            // Kiểm tra xem người dùng có đang cố cập nhật chính mình không
+            var token = HttpContext.Request.Headers["Authorization"].FirstOrDefault()?.Split(" ").Last();
+            var currentUserId = _jwtServices.GetUserIdFromToken(token);
+            if (currentUserId == nhanVien.id_tai_khoan)
+                return BadRequest("Không thể cập nhật trạng thái cho chính mình");
+
             // Update Chức vụ if provided
             if (!string.IsNullOrEmpty(suaTaiKhoanNhanVienDTO.chuc_vu))
             {

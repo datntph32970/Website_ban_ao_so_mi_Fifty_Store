@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace API.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20250518055758_2")]
-    partial class _2
+    [Migration("20250518213115_init")]
+    partial class init
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -467,6 +467,27 @@ namespace API.Migrations
                     b.ToTable("KhuyenMais");
                 });
 
+            modelBuilder.Entity("API.DbConects.Entities.Entities_Khuyen_Mai.SanPhamChiTietGiamGia", b =>
+                {
+                    b.Property<Guid>("id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("id_giam_gia")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("id_san_pham_chi_tiet")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("id");
+
+                    b.HasIndex("id_giam_gia");
+
+                    b.HasIndex("id_san_pham_chi_tiet");
+
+                    b.ToTable("SanPhamChiTietGiamGias");
+                });
+
             modelBuilder.Entity("API.DbConects.Entities.Entities_San_Pham.ChatLieu", b =>
                 {
                     b.Property<Guid>("id_chat_lieu")
@@ -825,9 +846,6 @@ namespace API.Migrations
                     b.Property<decimal>("gia_nhap")
                         .HasColumnType("decimal(18,2)");
 
-                    b.Property<Guid?>("id_giam_gia")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<Guid>("id_kich_co")
                         .HasColumnType("uniqueidentifier");
 
@@ -861,8 +879,6 @@ namespace API.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.HasKey("id_san_pham_chi_tiet");
-
-                    b.HasIndex("id_giam_gia");
 
                     b.HasIndex("id_kich_co");
 
@@ -1363,6 +1379,25 @@ namespace API.Migrations
                     b.Navigation("NguoiTao");
                 });
 
+            modelBuilder.Entity("API.DbConects.Entities.Entities_Khuyen_Mai.SanPhamChiTietGiamGia", b =>
+                {
+                    b.HasOne("API.DbConects.Entities.Entities_Khuyen_Mai.GiamGia", "GiamGia")
+                        .WithMany("SanPhamChiTietGiamGias")
+                        .HasForeignKey("id_giam_gia")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("API.DbConects.Entities.Entities_San_Pham.SanPhamChiTiet", "SanPhamChiTiet")
+                        .WithMany("SanPhamChiTietGiamGias")
+                        .HasForeignKey("id_san_pham_chi_tiet")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("GiamGia");
+
+                    b.Navigation("SanPhamChiTiet");
+                });
+
             modelBuilder.Entity("API.DbConects.Entities.Entities_San_Pham.ChatLieu", b =>
                 {
                     b.HasOne("API.DbConects.Entities.Entities_Tai_Khoan.NhanVien", "NguoiSua")
@@ -1556,10 +1591,6 @@ namespace API.Migrations
 
             modelBuilder.Entity("API.DbConects.Entities.Entities_San_Pham.SanPhamChiTiet", b =>
                 {
-                    b.HasOne("API.DbConects.Entities.Entities_Khuyen_Mai.GiamGia", "GiamGia")
-                        .WithMany("SanPhamChiTiets")
-                        .HasForeignKey("id_giam_gia");
-
                     b.HasOne("API.DbConects.Entities.Entities_San_Pham.KichCo", "KichCo")
                         .WithMany("SanPhamChiTiets")
                         .HasForeignKey("id_kich_co")
@@ -1588,8 +1619,6 @@ namespace API.Migrations
                         .HasForeignKey("id_san_pham")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.Navigation("GiamGia");
 
                     b.Navigation("KichCo");
 
@@ -1695,7 +1724,7 @@ namespace API.Migrations
 
             modelBuilder.Entity("API.DbConects.Entities.Entities_Khuyen_Mai.GiamGia", b =>
                 {
-                    b.Navigation("SanPhamChiTiets");
+                    b.Navigation("SanPhamChiTietGiamGias");
                 });
 
             modelBuilder.Entity("API.DbConects.Entities.Entities_Khuyen_Mai.KhuyenMai", b =>
@@ -1749,6 +1778,8 @@ namespace API.Migrations
                     b.Navigation("HinhAnhSanPhamChiTiets");
 
                     b.Navigation("HoaDonChiTiets");
+
+                    b.Navigation("SanPhamChiTietGiamGias");
                 });
 
             modelBuilder.Entity("API.DbConects.Entities.Entities_San_Pham.ThuongHieu", b =>

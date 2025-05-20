@@ -650,17 +650,11 @@ namespace API.Migrations
                     ngay_sua = table.Column<DateTime>(type: "datetime2", nullable: true),
                     id_san_pham = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     id_kich_co = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    id_mau_sac = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    id_giam_gia = table.Column<Guid>(type: "uniqueidentifier", nullable: true)
+                    id_mau_sac = table.Column<Guid>(type: "uniqueidentifier", nullable: false)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_SanPhamChiTiets", x => x.id_san_pham_chi_tiet);
-                    table.ForeignKey(
-                        name: "FK_SanPhamChiTiets_GiamGias_id_giam_gia",
-                        column: x => x.id_giam_gia,
-                        principalTable: "GiamGias",
-                        principalColumn: "id_giam_gia");
                     table.ForeignKey(
                         name: "FK_SanPhamChiTiets_KichCos_id_kich_co",
                         column: x => x.id_kich_co,
@@ -782,6 +776,31 @@ namespace API.Migrations
                         principalColumn: "id_nhan_vien");
                     table.ForeignKey(
                         name: "FK_HoaDonChiTiets_SanPhamChiTiets_id_san_pham_chi_tiet",
+                        column: x => x.id_san_pham_chi_tiet,
+                        principalTable: "SanPhamChiTiets",
+                        principalColumn: "id_san_pham_chi_tiet",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "SanPhamChiTietGiamGias",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    id_san_pham_chi_tiet = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    id_giam_gia = table.Column<Guid>(type: "uniqueidentifier", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_SanPhamChiTietGiamGias", x => x.id);
+                    table.ForeignKey(
+                        name: "FK_SanPhamChiTietGiamGias_GiamGias_id_giam_gia",
+                        column: x => x.id_giam_gia,
+                        principalTable: "GiamGias",
+                        principalColumn: "id_giam_gia",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_SanPhamChiTietGiamGias_SanPhamChiTiets_id_san_pham_chi_tiet",
                         column: x => x.id_san_pham_chi_tiet,
                         principalTable: "SanPhamChiTiets",
                         principalColumn: "id_san_pham_chi_tiet",
@@ -1007,9 +1026,14 @@ namespace API.Migrations
                 column: "id_nguoi_tao");
 
             migrationBuilder.CreateIndex(
-                name: "IX_SanPhamChiTiets_id_giam_gia",
-                table: "SanPhamChiTiets",
+                name: "IX_SanPhamChiTietGiamGias_id_giam_gia",
+                table: "SanPhamChiTietGiamGias",
                 column: "id_giam_gia");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_SanPhamChiTietGiamGias_id_san_pham_chi_tiet",
+                table: "SanPhamChiTietGiamGias",
+                column: "id_san_pham_chi_tiet");
 
             migrationBuilder.CreateIndex(
                 name: "IX_SanPhamChiTiets_id_kich_co",
@@ -1115,7 +1139,13 @@ namespace API.Migrations
                 name: "HoaDonChiTiets");
 
             migrationBuilder.DropTable(
+                name: "SanPhamChiTietGiamGias");
+
+            migrationBuilder.DropTable(
                 name: "HoaDons");
+
+            migrationBuilder.DropTable(
+                name: "GiamGias");
 
             migrationBuilder.DropTable(
                 name: "SanPhamChiTiets");
@@ -1131,9 +1161,6 @@ namespace API.Migrations
 
             migrationBuilder.DropTable(
                 name: "PhuongThucThanhToans");
-
-            migrationBuilder.DropTable(
-                name: "GiamGias");
 
             migrationBuilder.DropTable(
                 name: "KichCos");

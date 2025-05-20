@@ -110,7 +110,9 @@ namespace API.Controllers.HoaDon_Controller
                 var result = await _hoaDonService.GetAllHoaDonAdminDTOAsync();
                 var hoaDonBanTaiQuay = result.Where(x => x.loai_hoa_don == "TaiQuay" &&
                                                         x.trang_thai == "ChoTaiQuay" &&
-                                                        x.nhanVienXuLy.id_nhan_vien == id_nguoi_lay).ToList();
+                                                        x.nhanVienXuLy.id_nhan_vien == id_nguoi_lay)
+                                            .OrderBy(x => x.ngay_tao) // Sắp xếp theo ngày tạo tăng dần
+                                            .ToList();
 
                 // Kiểm tra và xử lý hóa đơn quá hạn
                 var hoaDonQuaHan = hoaDonBanTaiQuay.Where(x => (DateTime.Now - x.ngay_tao).TotalDays >= 1).ToList();
@@ -179,7 +181,9 @@ namespace API.Controllers.HoaDon_Controller
                     result = await _hoaDonService.GetAllHoaDonAdminDTOAsync();
                     hoaDonBanTaiQuay = result.Where(x => x.loai_hoa_don == "TaiQuay" &&
                                                         x.trang_thai == "ChoTaiQuay" &&
-                                                        x.nhanVienXuLy.id_nhan_vien == id_nguoi_lay).ToList();
+                                                        x.nhanVienXuLy.id_nhan_vien == id_nguoi_lay)
+                                            .OrderBy(x => x.ngay_tao) // Sắp xếp theo ngày tạo tăng dần
+                                            .ToList();
                 }
 
                 return Ok(
@@ -848,6 +852,16 @@ namespace API.Controllers.HoaDon_Controller
                 if (khuyenMai.so_luong_da_su_dung >= khuyenMai.so_luong_toi_da)
                     return BadRequest("Mã khuyến mãi đã hết lượt sử dụng");
 
+                // Kiểm tra xem khách hàng đã sử dụng khuyến mãi này chưa
+                var hoaDonDaSuDungKhuyenMai = await _hoaDonService.GetByConditionWithIncludeAsync(hd =>
+                    hd.id_khach_hang == idKhachHang &&
+                    hd.id_khuyen_mai == khuyenMai.id_khuyen_mai &&
+                    hd.trang_thai_hoa_don != "DaHuy" && // Không tính các đơn đã hủy
+                    hd.id_hoa_don != id_hoa_don); // Không tính đơn hiện tại
+
+                if (hoaDonDaSuDungKhuyenMai.Any())
+                    return BadRequest("Bạn đã sử dụng mã khuyến mãi này trước đó");
+
                 // Kiểm tra giá trị đơn hàng tối thiểu
                 if (hoaDon.tong_tien_don_hang < khuyenMai.gia_tri_don_hang_toi_thieu)
                     return BadRequest(
@@ -966,7 +980,7 @@ namespace API.Controllers.HoaDon_Controller
                     );
 
                     // Lưu mã giao dịch vào ghi chú để đối chiếu sau này
-                    hoaDon.ghi_chu = $"VNPay Transaction ID: {transactionId}";
+                    hoaDon.ghi_chu = $"VNPay Transaction ID: {transactionId} - {hoaDon.ghi_chu}";
                     await _hoaDonService.UpdateAsync(hoaDon);
 
                     return Ok(new
@@ -979,7 +993,7 @@ namespace API.Controllers.HoaDon_Controller
                 // For COD or other payment methods
                 hoaDon.trang_thai_hoa_don = "DangChoXuLy";
                 hoaDon.ngay_sua = DateTime.Now;
-
+                await _hoaDonService.GuiEmailCapNhatTrangThaiAsync(id_hoa_don, "DangChoXuLy");
                 var updateResult = await _hoaDonService.UpdateAsync(hoaDon);
                 if (!updateResult)
                     return BadRequest("Không thể cập nhật trạng thái hóa đơn");
@@ -1128,7 +1142,7 @@ namespace API.Controllers.HoaDon_Controller
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> DanhDauHetHang(Guid id_hoa_don, [FromBody] GhiChuRequest request)
+        public async Task<IActionResult> DanhDauHetHang(Guid id_hoa_don)
         {
             try
             {
@@ -1136,7 +1150,7 @@ namespace API.Controllers.HoaDon_Controller
                 if (id_nhan_vien == null)
                     return Unauthorized("Không thể xác thực thông tin nhân viên");
 
-                var (success, message) = await _hoaDonService.DanhDauHetHangAsync(id_hoa_don, request.ghi_chu, id_nhan_vien.Value);
+                var (success, message) = await _hoaDonService.DanhDauHetHangAsync(id_hoa_don, id_nhan_vien.Value);
                 if (!success)
                     return BadRequest(message);
 
@@ -1147,15 +1161,8 @@ namespace API.Controllers.HoaDon_Controller
                 return BadRequest($"Đã xảy ra lỗi: {ex.Message}");
             }
         }
-
-        public class GhiChuRequest
-        {
-            [Required(ErrorMessage = "Vui lòng nhập ghi chú")]
-            public string ghi_chu { get; set; }
-        }
-
         /// <summary>
-        /// Cập nhật trạng thái giao hàng (DangChuanBi, DangGiaoHang, DaHoanThanh)
+        /// Cập nhật trạng thái giao hàng (DangChuanBi, DangGiaoHang, DaNhanHang, DaHoanThanh)
         /// </summary>
         [HttpPut("cap-nhat-trang-thai-giao-hang/{id_hoa_don}")]
         [Authorize(Roles = "Admin,NhanVien")]
@@ -1186,8 +1193,8 @@ namespace API.Controllers.HoaDon_Controller
         public class TrangThaiRequest
         {
             [Required(ErrorMessage = "Vui lòng chọn trạng thái")]
-            [RegularExpression("^(DangChuanBi|DangGiaoHang|DaHoanThanh)$",
-                ErrorMessage = "Trạng thái không hợp lệ. Chỉ chấp nhận: DangChuanBi, DangGiaoHang, DaHoanThanh")]
+            [RegularExpression("^(DangChuanBi|DangGiaoHang|DaNhanHang|DaHoanThanh)$",
+                ErrorMessage = "Trạng thái không hợp lệ. Chỉ chấp nhận: DangChuanBi, DangGiaoHang, DaNhanHang, DaHoanThanh")]
             public string trang_thai { get; set; }
         }
 

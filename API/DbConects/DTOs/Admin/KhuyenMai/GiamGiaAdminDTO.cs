@@ -23,7 +23,7 @@ namespace API.DbConects.DTOs.Admin.KhuyenMai
         public string ten_nguoi_tao { get; set; }
         public DateTime? ngay_sua { get; set; }
         public string ten_nguoi_sua { get; set; }
-        public List<SanPhamAdminDTO> san_pham { get; set; }
+        public List<SanPhamChiTietAdminDTO> sanPhamChiTiets { get; set; }
     }
 
     public class ThemGiamGiaAdminDTO : IValidatableObject

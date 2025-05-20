@@ -108,6 +108,13 @@ namespace API.Controllers.SanPham_Controller
             if (result) return Ok("Xóa xuất xứ thành công");
             return BadRequest("Đã có lỗi khi xóa xuất xứ");
         }
+        [HttpGet("active")]
+        public async Task<IActionResult> GetActiveOrigins()
+        {
+            var allOrigins = await _xuatXuServices.GetAllWithIncludeAsync(cl => cl.Include(c => c.SanPhams));
+            var activeOrigins = allOrigins.Where(c => c.trang_thai == "HoatDong").ToList();
+            return Ok(activeOrigins);
+        }
         private string TaoMaXuatXu()
         {
             var lastXuatXu = _xuatXuServices.GetAllAsync().Result.OrderByDescending(x => x.ma_xuat_xu).FirstOrDefault();

@@ -20,6 +20,7 @@ namespace API.DbConects
         public DbSet<GioHangChiTiet> GioHangChiTiets { get; set; }
         public DbSet<DanhMuc> DanhMucs { get; set; }
         public DbSet<HoaDon> HoaDons { get; set; }
+        public DbSet<SanPhamChiTietGiamGia> SanPhamChiTietGiamGias { get; set; }
         public DbSet<HoaDonChiTiet> HoaDonChiTiets { get; set; }
         public DbSet<KhachHang> KhachHangs { get; set; }
         public DbSet<CuaHang> CuaHangs { get; set; }

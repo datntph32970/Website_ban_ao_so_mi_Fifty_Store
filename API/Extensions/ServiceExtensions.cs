@@ -70,6 +70,8 @@ namespace API.Extensions
             services.AddScoped<TaiKhoanClientValidationService>();
             services.AddScoped<DangNhapValidationService>();
             services.AddScoped<DoiMatKhauValidationService>();
+            services.AddMemoryCache();
+
 
         }
 

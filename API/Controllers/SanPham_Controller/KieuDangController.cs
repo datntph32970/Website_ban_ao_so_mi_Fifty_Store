@@ -112,6 +112,14 @@ namespace API.Controllers.SanPham_Controller
             return BadRequest("Đã có lỗi khi xóa kiểu dáng");
         }
 
+        [HttpGet("active")]
+        public async Task<IActionResult> GetActiveStyles()
+        {
+            var allStyles = await _kieuDangServices.GetAllWithIncludeAsync(cl => cl.Include(c => c.SanPhams));
+            var activeStyles = allStyles.Where(c => c.trang_thai == "HoatDong").ToList();
+            return Ok(activeStyles);
+        }
+
         private string TaoMaKieuDang()
         {
             var lastKieuDang = _kieuDangServices.GetAllAsync().Result.OrderByDescending(x => x.ma_kieu_dang).FirstOrDefault();
