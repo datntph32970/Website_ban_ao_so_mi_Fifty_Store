@@ -1178,6 +1178,10 @@ namespace API.Services.Implementations
                         hoaDon.KhuyenMai.so_luong_da_su_dung = Math.Max(0, hoaDon.KhuyenMai.so_luong_da_su_dung - 1);
                         await _khuyenMaiRepository.UpdateAsync(hoaDon.KhuyenMai);
                     }
+                    foreach (var item in hoaDon.HoaDonChiTiets)
+                    {
+                        await _hoaDonChiTietRepository.DeleteAsync(item.id_hoa_don_chi_tiet);
+                    }
 
                     // Delete order
                     await _hoaDonRepository.DeleteAsync(hoaDon.id_hoa_don);

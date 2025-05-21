@@ -55,6 +55,9 @@ namespace API.Controllers.TaiKhoan_Controller
                       (kh.TaiKhoan != null && kh.TaiKhoan.ten_dang_nhap != null) || kh.ma_khach_hang != null))).ToList();
             }
 
+            // Sắp xếp theo ngày tạo giảm dần
+            khachHangs = khachHangs.OrderByDescending(kh => kh.ngay_tao).ToList();
+
             // Tính toán phân trang
             thamSo.tong_so_phan_tu = khachHangs.Count;
             thamSo.tong_so_trang = (int)Math.Ceiling((double)thamSo.tong_so_phan_tu / thamSo.so_phan_tu_tren_trang);
