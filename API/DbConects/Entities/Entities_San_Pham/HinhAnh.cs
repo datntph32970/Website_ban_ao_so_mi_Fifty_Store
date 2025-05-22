@@ -20,6 +20,7 @@ namespace API.DbConects.Entities.Entities_San_Pham
         public Guid? id_nguoi_sua { get; set; }
         public DateTime? ngay_sua { get; set; }
         public virtual ICollection<HinhAnhSanPhamChiTiet>? HinhAnhSanPhamChiTiets { get; set; }
+        public virtual ICollection<HinhAnhHoanHang>? HinhAnhHoanHangs { get; set; }
         [ForeignKey("id_nguoi_tao")]
         public virtual NhanVien? NguoiTao { get; set; }
         [ForeignKey("id_nguoi_sua")]

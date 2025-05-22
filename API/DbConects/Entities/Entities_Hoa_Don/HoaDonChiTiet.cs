@@ -39,5 +39,7 @@ namespace API.DbConects.Entities.Entities_Hoa_Don
         public virtual NhanVien? NhanVienXuLy { get; set; }
         public virtual HoaDon? HoaDon { get; set; }
         public virtual SanPhamChiTiet? SanPhamChiTiet { get; set; }
+        public int? so_luong_da_hoan_tra { get; set; }
+        public string? trang_thai_hoan_tra { get; set; }
     }
 }

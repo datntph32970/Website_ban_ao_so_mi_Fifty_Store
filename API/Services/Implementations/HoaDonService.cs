@@ -972,6 +972,8 @@ namespace API.Services.Implementations
                     thanh_tien = ct.thanh_tien,              // Thành tiền lúc mua
                     ghi_chu = ct.ghi_chu,
                     trang_thai = ct.trang_thai,
+                    so_luong_da_hoan_tra = ct.so_luong_da_hoan_tra ?? 0,
+                    trang_thai_hoan_tra = ct.trang_thai_hoan_tra ?? null,
                     url_anh = ct.SanPhamChiTiet.HinhAnhSanPhamChiTiets.FirstOrDefault()?.HinhAnhs?.url ?? ct.SanPhamChiTiet.SanPham.anhMacDinh?.url,
                     gia_sp_dang_ban = ct.SanPhamChiTiet.gia_ban,                    // Sử dụng giá hiện tại
                     gia_sau_giam_sp_dang_ban = giaSauGiam,      // Sử dụng giá sau giảm giá hiện tại

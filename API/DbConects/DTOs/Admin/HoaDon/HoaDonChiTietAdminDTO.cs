@@ -24,7 +24,10 @@ namespace API.DbConects.DTOs.Admin.HoaDon
         public string? ten_nhan_vien_xu_ly { get; set; }
         public decimal gia_sp_dang_ban { get; set; }
         public decimal gia_sau_giam_sp_dang_ban { get; set; }
+        public int? so_luong_da_hoan_tra { get; set; }
         public string? url_anh { get; set; }
+        public string? trang_thai_hoan_tra { get; set; }
+
         public SanPhamChiTiet_HoaDonChiTietAdminDTO? sanPhamChiTiet { get; set; }
         public HoaDonAdminDTO? hoaDon { get; set; }
         public NhanVien_HoaDonAdminDTO? nhanVien { get; set; }
