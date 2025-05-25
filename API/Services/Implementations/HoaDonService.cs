@@ -27,7 +27,10 @@ namespace API.Services.Implementations
         DaHoanThanh,
         DaHuy,
         HetHang,
-        ChoTaiQuay
+        ChoTaiQuay,
+        DangYeuCauTraHang,
+        DaXacNhanTraHang,
+        DaTraHang
     }
 
     public class TransactionHelper
@@ -2288,6 +2291,122 @@ namespace API.Services.Implementations
 
             return result;
         }
+
+        public async Task<(bool success, string message)> YeuCauTraHangAsync(Guid idHoaDon, Guid idKhachHang, string lyDoTraHang, IFormFile hinhAnhTraHang)
+        {
+            var hoaDon = await _hoaDonRepository.GetByIdAsync(idHoaDon);
+            if (hoaDon == null)
+                return (false, "Không tìm thấy hóa đơn");
+
+            if (hoaDon.id_khach_hang != idKhachHang)
+                return (false, "Bạn không có quyền thực hiện thao tác này");
+
+            if (hoaDon.trang_thai_hoa_don != "DaNhanHang" && hoaDon.trang_thai_hoa_don != "DaHoanThanh")
+                return (false, "Chỉ có thể yêu cầu trả hàng khi đã nhận hàng hoặc đã hoàn thành đơn");
+
+            // Upload hình ảnh
+            var imagePath = await UploadImage(hinhAnhTraHang);
+
+            hoaDon.trang_thai_hoa_don = "DangYeuCauTraHang";
+            hoaDon.ly_do_tra_hang = lyDoTraHang;
+            hoaDon.ngay_yeu_cau_tra_hang = DateTime.Now;
+            hoaDon.hinh_anh_tra_hang = imagePath;
+
+            var result = await _hoaDonRepository.UpdateAsync(hoaDon);
+            if (!result)
+                return (false, "Có lỗi xảy ra khi cập nhật hóa đơn");
+
+            // Gửi email thông báo cho admin
+            await GuiEmailCapNhatTrangThaiAsync(idHoaDon, "DangYeuCauTraHang");
+
+            return (true, "Yêu cầu trả hàng đã được gửi thành công");
+        }
+
+        public async Task<(bool success, string message)> XacNhanTraHangAsync(Guid idHoaDon, Guid idNhanVien, string ghiChu)
+        {
+            var hoaDon = await _hoaDonRepository.GetByIdAsync(idHoaDon);
+            if (hoaDon == null)
+                return (false, "Không tìm thấy hóa đơn");
+
+            if (hoaDon.trang_thai_hoa_don != "DangYeuCauTraHang")
+                return (false, "Trạng thái hóa đơn không hợp lệ");
+
+            hoaDon.trang_thai_hoa_don = "DaXacNhanTraHang";
+            hoaDon.ngay_xac_nhan_tra_hang = DateTime.Now;
+            hoaDon.id_nhan_vien_xu_ly = idNhanVien;
+
+            var result = await _hoaDonRepository.UpdateAsync(hoaDon);
+            if (!result)
+                return (false, "Có lỗi xảy ra khi cập nhật hóa đơn");
+
+            // Gửi email thông báo cho khách hàng
+            await GuiEmailCapNhatTrangThaiAsync(idHoaDon, "DaXacNhanTraHang");
+
+            return (true, "Đã xác nhận yêu cầu trả hàng");
+        }
+
+        public async Task<(bool success, string message)> HoanThanhTraHangAsync(Guid idHoaDon, Guid idNhanVien)
+        {
+            var hoaDon = await _hoaDonRepository.GetByIdAsync(idHoaDon);
+            if (hoaDon == null)
+                return (false, "Không tìm thấy hóa đơn");
+
+            if (hoaDon.trang_thai_hoa_don != "DaXacNhanTraHang")
+                return (false, "Trạng thái hóa đơn không hợp lệ");
+            var kq = await _transactionHelper.ExecuteInTransactionAsync(async () =>
+            {
+
+                // Cập nhật số lượng sản phẩm
+                foreach (var chiTiet in hoaDon.HoaDonChiTiets)
+                {
+                    var sanPhamChiTiet = await _sanPhamChiTietRepository.GetByIdAsync(chiTiet.id_san_pham_chi_tiet);
+                    if (sanPhamChiTiet != null)
+                    {
+                        sanPhamChiTiet.so_luong += chiTiet.so_luong;
+                        await _sanPhamChiTietRepository.UpdateAsync(sanPhamChiTiet);
+                    }
+                }
+
+                // Hoàn tiền nếu đã thanh toán qua VNPay
+                if (hoaDon.PhuongThucThanhToan?.ma_phuong_thuc_thanh_toan == "PTVNPAY")
+                {
+                    await HoanTienVNPayAsync(idHoaDon);
+                }
+
+                hoaDon.trang_thai_hoa_don = "DaTraHang";
+                hoaDon.ngay_hoan_thanh_tra_hang = DateTime.Now;
+                var result = await _hoaDonRepository.UpdateAsync(hoaDon);
+                if (!result) return false;
+                return true;
+            });
+            if (!kq)
+                return (false, "Có lỗi xảy ra khi cập nhật hóa đơn");
+
+            // Gửi email thông báo cho khách hàng
+            await GuiEmailCapNhatTrangThaiAsync(idHoaDon, "DaTraHang");
+
+            return (true, "Đã hoàn thành quá trình trả hàng");
+        }
+
+        private async Task<string> UploadImage(IFormFile file)
+        {
+            if (file == null || file.Length == 0)
+                throw new ArgumentException("File không hợp lệ");
+
+            var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "images", "tra-hang");
+            if (!Directory.Exists(uploadsFolder))
+                Directory.CreateDirectory(uploadsFolder);
+
+            var uniqueFileName = $"{Guid.NewGuid()}_{file.FileName}";
+            var filePath = Path.Combine(uploadsFolder, uniqueFileName);
+
+            using (var stream = new FileStream(filePath, FileMode.Create))
+            {
+                await file.CopyToAsync(stream);
+            }
+
+            return $"/images/tra-hang/{uniqueFileName}";
+        }
     }
 
     public static class TrangThaiDonHangHelper
@@ -2302,7 +2421,9 @@ namespace API.Services.Implementations
             { "DangChuanBi", new[] { "DangGiaoHang" } },
             { "DangGiaoHang", new[] { "DaNhanHang", "DaHuy" } },
             { "DaNhanHang", new[] { "DaHoanThanh" } },
-            { "ChoTaiQuay", new[] { "DaHoanThanh" } }
+            { "ChoTaiQuay", new[] { "DaHoanThanh" } },
+            { "DangYeuCauTraHang", new[] { "DaXacNhanTraHang", "DaNhanHang" } },
+            { "DaXacNhanTraHang", new[] { "DaTraHang", "DangYeuCauTraHang" } }
         };
 
         public static bool IsValidTransition(string currentStatus, string newStatus)
@@ -2326,6 +2447,9 @@ namespace API.Services.Implementations
             "DaHuy" => "Đã hủy",
             "HetHang" => "Hết hàng",
             "ChoTaiQuay" => "Chờ tại quầy",
+            "DangYeuCauTraHang" => "Đang yêu cầu trả hàng",
+            "DaXacNhanTraHang" => "Đã xác nhận trả hàng",
+            "DaTraHang" => "Đã hoàn thành trả hàng",
             _ => "Không xác định"
         };
 
@@ -2342,6 +2466,9 @@ namespace API.Services.Implementations
             "DaHuy" => "Đơn hàng đã bị hủy",
             "HetHang" => "Đơn hàng không thể thực hiện do hết hàng",
             "ChoTaiQuay" => $"Đơn hàng đang chờ bạn đến nhận tại {cuaHang.ten_cua_hang}",
+            "DangYeuCauTraHang" => $"Yêu cầu trả hàng của bạn đang được xử lý. Vui lòng chờ xác nhận từ {cuaHang.ten_cua_hang}.",
+            "DaXacNhanTraHang" => $"{cuaHang.ten_cua_hang} đã xác nhận yêu cầu trả hàng của bạn. Vui lòng chuẩn bị hàng để trả.",
+            "DaTraHang" => $"Quá trình trả hàng đã hoàn tất. Cảm ơn bạn đã sử dụng dịch vụ của {cuaHang.ten_cua_hang}.",
             _ => "Trạng thái không xác định"
         };
     }

@@ -1425,5 +1425,77 @@ namespace API.Controllers.HoaDon_Controller
             [Required(ErrorMessage = "Vui lòng nhập lý do trả hàng")]
             public string ly_do { get; set; }
         }
+
+        [HttpPost("yeu-cau-tra-hang/{id_hoa_don}")]
+        [Authorize(Roles = "KhachHang")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> YeuCauTraHang(Guid id_hoa_don, [FromForm] YeuCauTraHangRequest request)
+        {
+            var id_khach_hang = GetIdKhachHang();
+            if (!id_khach_hang.HasValue)
+                return Unauthorized();
+
+            var result = await _hoaDonService.YeuCauTraHangAsync(id_hoa_don, id_khach_hang.Value, request.ly_do_tra_hang, request.hinh_anh_tra_hang);
+            if (!result.success)
+                return BadRequest(result.message);
+
+            return Ok(result.message);
+        }
+
+        [HttpPut("xac-nhan-tra-hang/{id_hoa_don}")]
+        [Authorize(Roles = "Admin,NhanVien")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> XacNhanTraHang(Guid id_hoa_don, [FromBody] XacNhanTraHangRequest request)
+        {
+            var id_nhan_vien = GetIdNhanVien();
+            if (!id_nhan_vien.HasValue)
+                return Unauthorized();
+
+            var result = await _hoaDonService.XacNhanTraHangAsync(id_hoa_don, id_nhan_vien.Value, request.ghi_chu);
+            if (!result.success)
+                return BadRequest(result.message);
+
+            return Ok(result.message);
+        }
+
+        [HttpPut("hoan-thanh-tra-hang/{id_hoa_don}")]
+        [Authorize(Roles = "Admin,NhanVien")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> HoanThanhTraHang(Guid id_hoa_don)
+        {
+            var id_nhan_vien = GetIdNhanVien();
+            if (!id_nhan_vien.HasValue)
+                return Unauthorized();
+
+            var result = await _hoaDonService.HoanThanhTraHangAsync(id_hoa_don, id_nhan_vien.Value);
+            if (!result.success)
+                return BadRequest(result.message);
+
+            return Ok(result.message);
+        }
+
+        public class YeuCauTraHangRequest
+        {
+            [Required(ErrorMessage = "Vui lòng nhập lý do trả hàng")]
+            public string ly_do_tra_hang { get; set; }
+
+            [Required(ErrorMessage = "Vui lòng cung cấp hình ảnh sản phẩm")]
+            public IFormFile hinh_anh_tra_hang { get; set; }
+        }
+
+        public class XacNhanTraHangRequest
+        {
+            [Required(ErrorMessage = "Vui lòng nhập ghi chú xác nhận")]
+            public string ghi_chu { get; set; }
+        }
     }
 }
