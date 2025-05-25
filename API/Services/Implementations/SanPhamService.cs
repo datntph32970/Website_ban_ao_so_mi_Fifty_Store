@@ -174,6 +174,8 @@ namespace API.Services.Implementations
                                                                 .Include(s => s.DanhMuc)
                                                                 .Include(s => s.KieuDang)
                                                                 .Include(s => s.ChatLieu)
+                                                                .Include(s => s.NguoiSua)
+                                                                .Include(s => s.NguoiTao)
                                                                 .Include(s => s.XuatXu)
                                                                 .Include(s => s.anhMacDinh)
                                                                 .Include(s => s.SanPhamChiTiets)
@@ -401,8 +403,8 @@ namespace API.Services.Implementations
                                         spctgg.GiamGia != null &&
                                         spctgg.GiamGia.trang_thai == "HoatDong" &&
                                         spctgg.GiamGia.thoi_gian_bat_dau <= DateTime.Now &&
-                                        spctgg.GiamGia.thoi_gian_ket_thuc >= DateTime.Now &&
-                                        spctgg.GiamGia.so_luong_da_su_dung < spctgg.GiamGia.so_luong_toi_da)
+                                        spctgg.GiamGia.thoi_gian_ket_thuc >= DateTime.Now 
+                                        )
                                     .Select(spctgg => new GiamGiaAdminDTO
                                     {
                                         id_giam_gia = spctgg.GiamGia.id_giam_gia,
@@ -464,7 +466,7 @@ namespace API.Services.Implementations
                         .ThenInclude(spctgg => spctgg.SanPhamChiTiet));
                     foreach (var giamGia in giamGias)
                     {
-                        if (giamGia.thoi_gian_ket_thuc < DateTime.Now || giamGia.so_luong_da_su_dung >= giamGia.so_luong_toi_da)
+                        if (giamGia.thoi_gian_ket_thuc < DateTime.Now )
                         {
                             giamGia.trang_thai = "KhongHoatDong";
                             foreach (var spctgg in giamGia.SanPhamChiTietGiamGias)

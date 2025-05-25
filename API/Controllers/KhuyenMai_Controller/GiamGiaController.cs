@@ -170,8 +170,7 @@ namespace API.Controllers.KhuyenMai_Controller
 
                 var activeGiamGias = giamGias.Where(g =>
                     g.trang_thai == "HoatDong" &&
-                    g.thoi_gian_ket_thuc > now &&
-                    g.so_luong_da_su_dung < g.so_luong_toi_da
+                    g.thoi_gian_ket_thuc > now
                 ).Select(g => new
                 {
                     id_giam_gia = g.id_giam_gia,
@@ -181,7 +180,6 @@ namespace API.Controllers.KhuyenMai_Controller
                     kieu_giam_gia = g.kieu_giam_gia,
                     gia_tri_giam = g.gia_tri_giam,
                     so_luong_da_su_dung = g.so_luong_da_su_dung,
-                    so_luong_toi_da = g.so_luong_toi_da,
                     thoi_gian_bat_dau = g.thoi_gian_bat_dau,
                     thoi_gian_ket_thuc = g.thoi_gian_ket_thuc,
                     trang_thai = g.trang_thai,
@@ -245,10 +243,6 @@ namespace API.Controllers.KhuyenMai_Controller
                 if (giamGia.kieu_giam_gia == "SoTien" && giamGia.gia_tri_giam <= 0)
                     return BadRequest("Giá trị giảm theo số tiền phải lớn hơn 0");
 
-                // Kiểm tra số lượng
-                if (giamGia.so_luong_toi_da <= 0)
-                    return BadRequest("Số lượng tối đa phải lớn hơn 0");
-
                 var existingGiamGia = await _giamGiaServices.ExistsAsync(g => g.ten_giam_gia == giamGia.ten_giam_gia);
                 if (existingGiamGia)
                     return BadRequest("Tên giảm giá đã tồn tại");
@@ -275,7 +269,6 @@ namespace API.Controllers.KhuyenMai_Controller
                     kieu_giam_gia = giamGia.kieu_giam_gia,
                     gia_tri_giam = giamGia.gia_tri_giam,
                     so_luong_da_su_dung = 0,
-                    so_luong_toi_da = giamGia.so_luong_toi_da,
                     thoi_gian_bat_dau = giamGia.thoi_gian_bat_dau,
                     thoi_gian_ket_thuc = giamGia.thoi_gian_ket_thuc,
                     trang_thai = giamGia.trang_thai.ToString(),
@@ -307,45 +300,80 @@ namespace API.Controllers.KhuyenMai_Controller
             try
             {
                 if (!ModelState.IsValid)
-                    return BadRequest(ModelState);
+                    return BadRequest(new { success = false, message = "Dữ liệu không hợp lệ", errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage) });
 
                 var existingGiamGia = await _giamGiaServices.GetByIdWithIncludeAsync(id,
                     q => q.Include(gg => gg.SanPhamChiTietGiamGias)
-                         .ThenInclude(spct => spct.SanPhamChiTiet));
+                         .ThenInclude(spct => spct.SanPhamChiTiet)
+                         .ThenInclude(spct => spct.SanPhamChiTietGiamGias)
+                         .ThenInclude(spgg => spgg.GiamGia));
 
                 if (existingGiamGia == null)
-                    return NotFound("Không tìm thấy mã giảm giá");
+                    return NotFound(new { success = false, message = "Không tìm thấy mã giảm giá" });
 
                 // Kiểm tra thời gian
                 if (giamGiaDTO.thoi_gian_bat_dau >= giamGiaDTO.thoi_gian_ket_thuc)
-                    return BadRequest("Thời gian bắt đầu phải nhỏ hơn thời gian kết thúc");
+                    return BadRequest(new { success = false, message = "Thời gian bắt đầu phải nhỏ hơn thời gian kết thúc" });
 
                 // Nếu giảm giá đã được áp dụng, không cho phép sửa thời gian bắt đầu về tương lai
                 if (existingGiamGia.SanPhamChiTietGiamGias.Any() &&
                     giamGiaDTO.thoi_gian_bat_dau > DateTime.Now)
-                    return BadRequest("Không thể sửa thời gian bắt đầu về tương lai khi giảm giá đã được áp dụng");
+                    return BadRequest(new { success = false, message = "Không thể sửa thời gian bắt đầu về tương lai khi giảm giá đã được áp dụng" });
+
+                // Kiểm tra xung đột thời gian với các giảm giá khác
+                var sanPhamChiTietIds = existingGiamGia.SanPhamChiTietGiamGias.Select(x => x.id_san_pham_chi_tiet).ToList();
+                var sanPhamChiTiets = await _sanPhamChiTietServices.GetByConditionWithIncludeAsync(
+                    spct => sanPhamChiTietIds.Contains(spct.id_san_pham_chi_tiet),
+                    spct => spct.Include(x => x.SanPhamChiTietGiamGias)
+                               .ThenInclude(spgg => spgg.GiamGia));
+
+                var xungDotSanPham = new List<string>();
+                foreach (var spct in sanPhamChiTiets)
+                {
+                    var giamGiaXungDot = spct.SanPhamChiTietGiamGias
+                        .Where(spgg => spgg.id_giam_gia != id && // Loại trừ giảm giá hiện tại
+                                     spgg.GiamGia.trang_thai == "HoatDong" &&
+                                     ((giamGiaDTO.thoi_gian_bat_dau <= spgg.GiamGia.thoi_gian_ket_thuc &&
+                                       giamGiaDTO.thoi_gian_ket_thuc >= spgg.GiamGia.thoi_gian_bat_dau) ||
+                                      (spgg.GiamGia.thoi_gian_bat_dau <= giamGiaDTO.thoi_gian_ket_thuc &&
+                                       spgg.GiamGia.thoi_gian_ket_thuc >= giamGiaDTO.thoi_gian_bat_dau)))
+                        .ToList();
+
+                    if (giamGiaXungDot.Any())
+                    {
+                        var maGiamGiaXungDot = string.Join(", ", giamGiaXungDot.Select(x => x.GiamGia.ma_giam_gia));
+                        xungDotSanPham.Add($"Sản phẩm {spct.ma_san_pham_chi_tiet} đã có giảm giá ({maGiamGiaXungDot}) trong khoảng thời gian này");
+                    }
+                }
+
+                if (xungDotSanPham.Any())
+                {
+                    return BadRequest(new
+                    {
+                        success = false,
+                        message = "Không thể cập nhật thời gian giảm giá do xung đột với các giảm giá khác",
+                        chi_tiet = xungDotSanPham
+                    });
+                }
 
                 // Kiểm tra giá trị giảm
                 if (giamGiaDTO.kieu_giam_gia == "PhanTram" &&
                     (giamGiaDTO.gia_tri_giam <= 0 || giamGiaDTO.gia_tri_giam > 100))
-                    return BadRequest("Giá trị giảm theo phần trăm phải nằm trong khoảng 1-100");
+                    return BadRequest(new { success = false, message = "Giá trị giảm theo phần trăm phải nằm trong khoảng 1-100" });
 
                 if (giamGiaDTO.kieu_giam_gia == "SoTien" && giamGiaDTO.gia_tri_giam <= 0)
-                    return BadRequest("Giá trị giảm theo số tiền phải lớn hơn 0");
+                    return BadRequest(new { success = false, message = "Giá trị giảm theo số tiền phải lớn hơn 0" });
 
-                // Kiểm tra số lượng
-                if (giamGiaDTO.so_luong_toi_da < existingGiamGia.so_luong_da_su_dung)
-                    return BadRequest("Số lượng tối đa không thể nhỏ hơn số lượng đã sử dụng");
 
                 var existingGiamGiaKhacTen = await _giamGiaServices.ExistsAsync(g =>
                     g.ten_giam_gia.ToLower() == giamGiaDTO.ten_giam_gia.ToLower() &&
                     g.id_giam_gia != id);
 
                 if (existingGiamGiaKhacTen)
-                    return BadRequest("Tên giảm giá đã tồn tại");
+                    return BadRequest(new { success = false, message = "Tên giảm giá đã tồn tại" });
 
                 if (string.IsNullOrEmpty(giamGiaDTO.ma_giam_gia))
-                    return BadRequest("Mã giảm giá không được để trống");
+                    return BadRequest(new { success = false, message = "Mã giảm giá không được để trống" });
 
                 giamGiaDTO.ma_giam_gia = giamGiaDTO.ma_giam_gia.Replace(" ", "").ToUpper();
                 var existingGiamGiaKhacMa = await _giamGiaServices.ExistsAsync(g =>
@@ -353,7 +381,7 @@ namespace API.Controllers.KhuyenMai_Controller
                     g.id_giam_gia != id);
 
                 if (existingGiamGiaKhacMa)
-                    return BadRequest("Mã giảm giá đã tồn tại");
+                    return BadRequest(new { success = false, message = "Mã giảm giá đã tồn tại" });
 
                 // Cập nhật thông tin
                 existingGiamGia.ten_giam_gia = giamGiaDTO.ten_giam_gia.Trim();
@@ -361,7 +389,6 @@ namespace API.Controllers.KhuyenMai_Controller
                 existingGiamGia.ma_giam_gia = giamGiaDTO.ma_giam_gia;
                 existingGiamGia.kieu_giam_gia = giamGiaDTO.kieu_giam_gia;
                 existingGiamGia.gia_tri_giam = giamGiaDTO.gia_tri_giam;
-                existingGiamGia.so_luong_toi_da = giamGiaDTO.so_luong_toi_da;
                 existingGiamGia.thoi_gian_bat_dau = giamGiaDTO.thoi_gian_bat_dau;
                 existingGiamGia.thoi_gian_ket_thuc = giamGiaDTO.thoi_gian_ket_thuc;
                 existingGiamGia.trang_thai = giamGiaDTO.trang_thai;
@@ -373,16 +400,17 @@ namespace API.Controllers.KhuyenMai_Controller
                 {
                     return Ok(new
                     {
+                        success = true,
                         message = "Cập nhật mã giảm giá thành công",
                         data = existingGiamGia
                     });
                 }
 
-                return BadRequest("Đã xảy ra lỗi khi cập nhật mã giảm giá");
+                return BadRequest(new { success = false, message = "Đã xảy ra lỗi khi cập nhật mã giảm giá" });
             }
             catch (Exception ex)
             {
-                return BadRequest($"Đã xảy ra lỗi: {ex.Message}");
+                return BadRequest(new { success = false, message = $"Đã xảy ra lỗi: {ex.Message}" });
             }
         }
 
@@ -581,10 +609,6 @@ namespace API.Controllers.KhuyenMai_Controller
                     thoi_gian_ket_thuc = giamGia.thoi_gian_ket_thuc,
                     con_hieu_luc = giamGia.thoi_gian_ket_thuc >= now && giamGia.trang_thai == "HoatDong",
                     so_luong_da_su_dung = giamGia.so_luong_da_su_dung,
-                    so_luong_toi_da = giamGia.so_luong_toi_da,
-                    ti_le_su_dung = giamGia.so_luong_toi_da > 0
-                        ? (double)giamGia.so_luong_da_su_dung / giamGia.so_luong_toi_da * 100
-                        : 0,
                     tong_bien_the_ap_dung = giamGia.SanPhamChiTietGiamGias.Count,
                     bien_the_dang_ap_dung = giamGia.SanPhamChiTietGiamGias
                         .Count(spgg => spgg.SanPhamChiTiet.trang_thai == "HoatDong" &&
@@ -667,7 +691,7 @@ namespace API.Controllers.KhuyenMai_Controller
                 var now = DateTime.Now;
                 var expiredDiscounts = await _giamGiaServices.GetByConditionAsync(g =>
                     g.trang_thai == "HoatDong" &&
-                    (g.thoi_gian_ket_thuc < now || g.so_luong_da_su_dung >= g.so_luong_toi_da));
+                    (g.thoi_gian_ket_thuc < now));
 
                 foreach (var discount in expiredDiscounts)
                 {
@@ -691,7 +715,7 @@ namespace API.Controllers.KhuyenMai_Controller
                 var now = DateTime.Now;
                 var updatedDiscounts = await _giamGiaServices.GetByConditionAsync(g =>
                     g.trang_thai == "HoatDong" &&
-                    (g.thoi_gian_ket_thuc < now || g.so_luong_da_su_dung >= g.so_luong_toi_da));
+                    (g.thoi_gian_ket_thuc < now));
 
                 var count = 0;
                 foreach (var discount in updatedDiscounts)

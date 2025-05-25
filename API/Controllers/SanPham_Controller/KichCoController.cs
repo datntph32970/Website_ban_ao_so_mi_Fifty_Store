@@ -119,6 +119,16 @@ namespace API.Controllers.SanPham_Controller
             return BadRequest("Đã có lỗi khi xóa kích cỡ!");
         }
 
+        [HttpGet("active")]
+        public async Task<IActionResult> GetActiveSizes()
+        {
+            var allSizes = await _kichCoServices.GetAllWithIncludeAsync(
+                q => q.Include(k => k.SanPhamChiTiets)
+            );
+            var activeSizes = allSizes.Where(k => k.trang_thai == "HoatDong").ToList();
+            return Ok(activeSizes);
+        }
+
         private Guid? GetIdNhanVien()
         {
             var token = HttpContext.Request.Headers["Authorization"].FirstOrDefault()?.Split(" ").Last();

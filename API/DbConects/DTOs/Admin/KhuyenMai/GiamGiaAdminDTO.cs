@@ -14,7 +14,6 @@ namespace API.DbConects.DTOs.Admin.KhuyenMai
         public string mo_ta { get; set; }
         public string kieu_giam_gia { get; set; }
         public decimal gia_tri_giam { get; set; }
-        public int so_luong_toi_da { get; set; }
         public int so_luong_da_su_dung { get; set; }
         public DateTime thoi_gian_bat_dau { get; set; }
         public DateTime thoi_gian_ket_thuc { get; set; }
@@ -42,10 +41,6 @@ namespace API.DbConects.DTOs.Admin.KhuyenMai
 
         [Required(ErrorMessage = "Giá trị giảm không được để trống")]
         public decimal gia_tri_giam { get; set; }
-
-        [Required(ErrorMessage = "Số lượng tối đa không được để trống")]
-        [Range(1, int.MaxValue, ErrorMessage = "Số lượng tối đa phải lớn hơn 0")]
-        public int so_luong_toi_da { get; set; }
 
         [Required(ErrorMessage = "Thời gian bắt đầu không được để trống")]
         [DataType(DataType.DateTime, ErrorMessage = "Thời gian bắt đầu không hợp lệ")]
@@ -112,8 +107,6 @@ namespace API.DbConects.DTOs.Admin.KhuyenMai
         [Range(0, double.MaxValue, ErrorMessage = "Giá trị giảm phải lớn hơn hoặc bằng 0")]
         public decimal gia_tri_giam { get; set; }
 
-        [Range(1, int.MaxValue, ErrorMessage = "Số lượng tối đa phải lớn hơn 0")]
-        public int so_luong_toi_da { get; set; }
 
         [Required(ErrorMessage = "Thời gian bắt đầu không được để trống")]
         [DataType(DataType.DateTime, ErrorMessage = "Thời gian bắt đầu không hợp lệ")]

@@ -27,6 +27,7 @@ namespace API.Controllers.SanPham_Controller
         private readonly IJwtServices _jwtServices;
         private readonly IBaseService<SanPhamChiTietGiamGia> _sanPhamChiTietGiamGiaServices;
         private readonly IBaseService<GiamGia> _giamGiaServices;
+        private static readonly object _lockObject = new object();
 
         public SanPhamController(ISanPhamService sanPhamServices, IBaseService<SanPhamChiTiet> sanPhamChiTietServices, IBaseService<HinhAnh> hinhAnhServices, IBaseService<HinhAnhSanPhamChiTiet> hinhAnhSanPhamChiTietServices, IBaseService<MauSac> mauSacServices, IBaseService<KichCo> kichCoServices, IJwtServices jwtServices, IBaseService<HoaDonChiTiet> hoaDonChiTietServices, IBaseService<SanPhamChiTietGiamGia> sanPhamChiTietGiamGiaServices, IBaseService<GiamGia> giamGiaServices)
         {
@@ -689,6 +690,7 @@ namespace API.Controllers.SanPham_Controller
         {
             try
             {
+                var id_nhan_vien = GetIdNhanVien();
                 // Lấy sản phẩm hiện tại với chi tiết và hình ảnh
                 var existingSanPham = await _sanPhamServices.GetByIdWithIncludeAsync(id,
                     q => q.Include(sp => sp.SanPhamChiTiets)
@@ -707,7 +709,8 @@ namespace API.Controllers.SanPham_Controller
                 existingSanPham.id_xuat_xu = Guid.Parse(sanPhamDTO.id_xuat_xu);
                 existingSanPham.id_danh_muc = Guid.Parse(sanPhamDTO.id_danh_muc);
                 existingSanPham.trang_thai = sanPhamDTO.trang_thai;
-
+                existingSanPham.id_nguoi_sua = id_nhan_vien;
+                existingSanPham.ngay_sua = DateTime.Now;
                 // Xử lý ảnh mặc định mới nếu có
                 if (!string.IsNullOrEmpty(sanPhamDTO.url_anh_mac_dinh))
                 {
@@ -740,6 +743,9 @@ namespace API.Controllers.SanPham_Controller
                             existingChiTiet.gia_ban = spctDTO.gia_ban;
                             existingChiTiet.gia_nhap = spctDTO.gia_nhap;
                             existingChiTiet.trang_thai = spctDTO.trang_thai;
+                            existingChiTiet.id_nguoi_sua = id_nhan_vien;
+                            existingChiTiet.ngay_sua = DateTime.Now;
+
                             await _sanPhamChiTietServices.UpdateAsync(existingChiTiet);
 
                             // Cập nhật giảm giá
@@ -1330,67 +1336,72 @@ namespace API.Controllers.SanPham_Controller
                 if (dto.trang_thai != "HoatDong" && dto.trang_thai != "KhongHoatDong")
                     return BadRequest("Trạng thái không hợp lệ");
 
-                // Kiểm tra sản phẩm chi tiết có hóa đơn không
-                var existingSanPhamChiTiet = await _sanPhamChiTietServices.GetByIdWithIncludeAsync(id,
-                    q => q.Include(spct => spct.HoaDonChiTiets).ThenInclude(hdct => hdct.HoaDon));
-
-                if (existingSanPhamChiTiet == null)
-                    return NotFound("Không tìm thấy sản phẩm chi tiết");
-
-                // Nếu có hóa đơn và đang cố gắng chuyển sang trạng thái không hoạt động
-                if (existingSanPhamChiTiet.HoaDonChiTiets.Any() && dto.trang_thai == "KhongHoatDong")
-                {
-                    // Kiểm tra xem có hóa đơn nào đang trong quá trình xử lý không
-                    var activeInvoices = existingSanPhamChiTiet.HoaDonChiTiets
-                        .Any(hdct => hdct.HoaDon != null &&
-                            (hdct.HoaDon.trang_thai_hoa_don == "ChoTaiQuay" ||
-                             hdct.HoaDon.trang_thai_hoa_don == "DangGiao" ||
-                             hdct.HoaDon.trang_thai_hoa_don == "DangXuLy"));
-
-                    if (activeInvoices)
-                        return BadRequest("Không thể vô hiệu hóa sản phẩm chi tiết đang có trong hóa đơn chưa hoàn thành");
-                }
-
                 var result = await _sanPhamServices.ExecuteInTransactionAsync(async () =>
                 {
-                    // Cập nhật trạng thái sản phẩm chi tiết
-                    existingSanPhamChiTiet.trang_thai = dto.trang_thai;
-                    existingSanPhamChiTiet.ngay_sua = DateTime.Now;
-                    existingSanPhamChiTiet.id_nguoi_sua = (Guid)GetIdNhanVien();
-
-                    var updateResult = await _sanPhamChiTietServices.UpdateAsync(existingSanPhamChiTiet);
-                    if (!updateResult)
-                        return false;
-
-                    // Kiểm tra và cập nhật trạng thái sản phẩm chính
-                    if (dto.trang_thai == "KhongHoatDong")
+                    lock (_lockObject)
                     {
-                        var allSanPhamChiTiet = await _sanPhamChiTietServices.GetByConditionAsync(x =>
-                            x.id_san_pham == existingSanPhamChiTiet.id_san_pham);
+                        // Lấy sản phẩm chi tiết với khóa để tránh race condition
+                        var existingSanPhamChiTiet = _sanPhamChiTietServices.GetByIdWithIncludeAsync(id,
+                            q => q.Include(spct => spct.HoaDonChiTiets)
+                                  .ThenInclude(hdct => hdct.HoaDon)
+                                  .Include(spct => spct.SanPham)).Result;
 
-                        if (allSanPhamChiTiet.All(x => x.trang_thai == "KhongHoatDong"))
+                        if (existingSanPhamChiTiet == null)
+                            return false;
+
+                        // Nếu có hóa đơn và đang cố gắng chuyển sang trạng thái không hoạt động
+                        if (existingSanPhamChiTiet.HoaDonChiTiets.Any() && dto.trang_thai == "KhongHoatDong")
                         {
-                            var sanPham = await _sanPhamServices.GetByIdAsync(existingSanPhamChiTiet.id_san_pham);
-                            if (sanPham != null)
+                            var activeInvoices = existingSanPhamChiTiet.HoaDonChiTiets
+                                .Any(hdct => hdct.HoaDon != null &&
+                                    (hdct.HoaDon.trang_thai_hoa_don == "ChoTaiQuay" ||
+                                     hdct.HoaDon.trang_thai_hoa_don == "DangGiao" ||
+                                     hdct.HoaDon.trang_thai_hoa_don == "DangXuLy"));
+
+                            if (activeInvoices)
+                                return false;
+                        }
+
+                        // Cập nhật trạng thái sản phẩm chi tiết
+                        existingSanPhamChiTiet.trang_thai = dto.trang_thai;
+                        existingSanPhamChiTiet.ngay_sua = DateTime.Now;
+                        existingSanPhamChiTiet.id_nguoi_sua = (Guid)GetIdNhanVien();
+
+                        var updateResult = _sanPhamChiTietServices.UpdateAsync(existingSanPhamChiTiet).Result;
+                        if (!updateResult)
+                            return false;
+
+                        // Lấy tất cả sản phẩm chi tiết của sản phẩm chính với khóa để tránh race condition
+                        var allSanPhamChiTiet = _sanPhamChiTietServices.GetByConditionWithIncludeAsync(
+                            x => x.id_san_pham == existingSanPhamChiTiet.id_san_pham,
+                            q => q.Include(spct => spct.SanPham)).Result;
+
+                        // Kiểm tra trạng thái của tất cả sản phẩm chi tiết
+                        var allInactive = allSanPhamChiTiet.All(x => x.trang_thai == "KhongHoatDong");
+                        var anyActive = allSanPhamChiTiet.Any(x => x.trang_thai == "HoatDong");
+
+                        // Cập nhật trạng thái sản phẩm chính
+                        var sanPham = existingSanPhamChiTiet.SanPham;
+                        if (sanPham != null)
+                        {
+                            if (dto.trang_thai == "KhongHoatDong" && allInactive)
                             {
                                 sanPham.trang_thai = "KhongHoatDong";
                                 sanPham.ngay_sua = DateTime.Now;
-                                await _sanPhamServices.UpdateAsync(sanPham);
+                                sanPham.id_nguoi_sua = (Guid)GetIdNhanVien();
+                                _sanPhamServices.UpdateAsync(sanPham).Wait();
+                            }
+                            else if (dto.trang_thai == "HoatDong" && anyActive)
+                            {
+                                sanPham.trang_thai = "HoatDong";
+                                sanPham.ngay_sua = DateTime.Now;
+                                sanPham.id_nguoi_sua = (Guid)GetIdNhanVien();
+                                _sanPhamServices.UpdateAsync(sanPham).Wait();
                             }
                         }
-                    }
-                    else if (dto.trang_thai == "HoatDong")
-                    {
-                        var sanPham = await _sanPhamServices.GetByIdAsync(existingSanPhamChiTiet.id_san_pham);
-                        if (sanPham != null && sanPham.trang_thai == "KhongHoatDong")
-                        {
-                            sanPham.trang_thai = "HoatDong";
-                            sanPham.ngay_sua = DateTime.Now;
-                            await _sanPhamServices.UpdateAsync(sanPham);
-                        }
-                    }
 
-                    return true;
+                        return true;
+                    }
                 });
 
                 if (!result)

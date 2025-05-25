@@ -20,8 +20,6 @@ namespace API.DbConects.Entities.Entities_Khuyen_Mai
         public string kieu_giam_gia { get; set; }
         [Required(ErrorMessage = "Giá trị giảm giá không được để trống")]
         public decimal gia_tri_giam { get; set; }
-        [Required(ErrorMessage = "Số lượng tối đa không được để trống")]
-        public int so_luong_toi_da { get; set; }
         [Required(ErrorMessage = "Số lượng đã sử dụng không được để trống")]
         public int so_luong_da_su_dung { get; set; }
         [Required(ErrorMessage = "Thời gian bắt đầu không được để trống")]

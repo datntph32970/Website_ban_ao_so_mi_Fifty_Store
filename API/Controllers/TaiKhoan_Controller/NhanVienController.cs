@@ -207,6 +207,7 @@ namespace API.Controllers.TaiKhoan_Controller
 
         public async Task<IActionResult> UpdateQuyenHoacTrangThaiNhanVien(SuaTaiKhoanNhanVienDTO suaTaiKhoanNhanVienDTO)
         {
+            var id_nhan_vien = GetIDNguoiTao();
             var nhanVien = await _nhanVienService.GetByIdAsync(Guid.Parse(suaTaiKhoanNhanVienDTO.id_nhan_vien));
             if (nhanVien == null)
                 return NotFound("Không tìm thấy nhân viên");
@@ -241,6 +242,8 @@ namespace API.Controllers.TaiKhoan_Controller
 
                 taikhoan.trang_thai = suaTaiKhoanNhanVienDTO.trang_thai;
                 nhanVien.trang_thai = suaTaiKhoanNhanVienDTO.trang_thai;
+                nhanVien.ngay_sua = DateTime.Now;
+
             }
 
             var result = await _taiKhoanService.ExecuteInTransactionAsync(async () =>

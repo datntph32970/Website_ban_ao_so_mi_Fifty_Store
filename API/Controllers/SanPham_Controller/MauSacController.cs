@@ -119,6 +119,16 @@ namespace API.Controllers.SanPham_Controller
             return BadRequest("Đã có lỗi khi xóa màu sắc!");
         }
 
+        [HttpGet("active")]
+        public async Task<IActionResult> GetActiveColors()
+        {
+            var allColors = await _mauSacServices.GetAllWithIncludeAsync(
+                q => q.Include(m => m.SanPhamChiTiets)
+            );
+            var activeColors = allColors.Where(m => m.trang_thai == "HoatDong").ToList();
+            return Ok(activeColors);
+        }
+
         private Guid? GetIdNhanVien()
         {
             var token = HttpContext.Request.Headers["Authorization"].FirstOrDefault()?.Split(" ").Last();

@@ -14,12 +14,12 @@ namespace API.Controllers
     public class PaymentController : ControllerBase
     {
         private readonly VNPayService _vnPayService;
-        private readonly IBaseService<HoaDon> _hoaDonService;
+        private readonly IHoaDonService _hoaDonService;
         private readonly IBaseService<SanPhamChiTiet> _sanPhamChiTietService;
         private readonly IBaseService<HoaDonChiTiet> _hoaDonChiTietService;
         private readonly string _frontendUrl;
 
-        public PaymentController(VNPayService vnPayService, IBaseService<HoaDon> hoaDonService, IBaseService<HoaDonChiTiet> hoaDonChiTietService, IBaseService<SanPhamChiTiet> sanPhamChiTietService, IConfiguration configuration)
+        public PaymentController(VNPayService vnPayService, IHoaDonService hoaDonService, IBaseService<HoaDonChiTiet> hoaDonChiTietService, IBaseService<SanPhamChiTiet> sanPhamChiTietService, IConfiguration configuration)
         {
             _vnPayService = vnPayService;
             _hoaDonService = hoaDonService;
@@ -140,6 +140,7 @@ namespace API.Controllers
                     }
 
                     await _hoaDonService.UpdateAsync(hoaDon);
+                    await _hoaDonService.GuiEmailCapNhatTrangThaiAsync(hoaDon.id_hoa_don, hoaDon.trang_thai_hoa_don);
 
                     // Chuyển hướng về trang thành công
                     return Redirect($"{_frontendUrl}/payment-success?orderCode={hoaDon.ma_hoa_don}");

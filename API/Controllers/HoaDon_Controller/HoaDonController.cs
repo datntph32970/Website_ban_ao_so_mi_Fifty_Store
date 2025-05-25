@@ -530,7 +530,8 @@ namespace API.Controllers.HoaDon_Controller
                         SoHoaDon = hoaDon.ma_hoa_don,
                         NgayLap = hoaDon.ngay_tao.ToString("dd/MM/yyyy HH:mm:ss"),
                         NhanVienBanHang = hoaDon.ten_nguoi_xu_ly,
-                        MaNhanVien = hoaDon.nhanVienXuLy?.ma_nhan_vien
+                        MaNhanVien = hoaDon.nhanVienXuLy?.ma_nhan_vien,
+                        MaKhuyenMai = hoaDon.khuyenMai?.ma_khuyen_mai
                     },
                     ThongTinKhachHang = new
                     {
@@ -547,7 +548,8 @@ namespace API.Controllers.HoaDon_Controller
                         SoLuong = ct.so_luong,
                         DonGia = ct.don_gia,
                         GiaSauGiamGia = ct.gia_sau_giam_gia,
-                        ThanhTien = ct.thanh_tien
+                        ThanhTien = ct.thanh_tien,
+                        maSPCT = ct.sanPhamChiTiet.ma_san_pham_chi_tiet
                     }).ToList(),
                     ThongTinThanhToan = new
                     {
@@ -945,7 +947,7 @@ namespace API.Controllers.HoaDon_Controller
                 var hoaDon = await _hoaDonService.GetByIdWithIncludeAsync(id_hoa_don,
                     q => q.Include(hd => hd.PhuongThucThanhToan)
                          .Include(hd => hd.HoaDonChiTiets)
-                         .ThenInclude(hct => hct.SanPhamChiTiet));
+                         .ThenInclude(hct => hct.SanPhamChiTiet).ThenInclude(spct => spct.SanPhamChiTietGiamGias).ThenInclude(spgg => spgg.GiamGia));
 
                 if (hoaDon == null)
                     return NotFound("Không tìm thấy hóa đơn");
@@ -961,25 +963,11 @@ namespace API.Controllers.HoaDon_Controller
                 {
                     if (hoaDonChiTiet.SanPhamChiTiet.so_luong < hoaDonChiTiet.so_luong)
                         return BadRequest($"Sản phẩm {hoaDonChiTiet.ten_san_pham} - {hoaDonChiTiet.ten_mau_sac} - {hoaDonChiTiet.ten_kich_co} không đủ số lượng");
+
+
+
                 }
-                if (hoaDon.id_khuyen_mai.HasValue)
-                {
-                    var khuyenMai = await _khuyenMaiService.GetByIdAsync(hoaDon.id_khuyen_mai.Value);
-                    if (khuyenMai.so_luong_da_su_dung >= khuyenMai.so_luong_toi_da)
-                        return BadRequest("Mã khuyến mãi đã hết lượt sử dụng");
-                    if (khuyenMai.thoi_gian_bat_dau > DateTime.Now)
-                        return BadRequest("Mã khuyến mãi chưa đến thời gian áp dụng");
-                    if (khuyenMai.thoi_gian_ket_thuc < DateTime.Now)
-                        return BadRequest("Mã khuyến mãi đã hết thời gian áp dụng");
-                    if (hoaDon.tong_tien_don_hang < khuyenMai.gia_tri_don_hang_toi_thieu)
-                        return BadRequest(
-                            $"Giá trị đơn hàng chưa đạt giá trị tối thiểu để áp dụng khuyến mãi. " +
-                            $"Tối thiểu: {khuyenMai.gia_tri_don_hang_toi_thieu:N0} VNĐ");
-                    if (hoaDon.id_khach_hang != idKhachHang)
-                        return BadRequest("Bạn không có quyền xác nhận hóa đơn này");
-                    khuyenMai.so_luong_da_su_dung++;
-                    await _khuyenMaiService.UpdateAsync(khuyenMai);
-                }
+
                 // Check payment method
                 if (hoaDon.PhuongThucThanhToan?.ma_phuong_thuc_thanh_toan == "PTVNPAY")
                 {
@@ -1316,6 +1304,126 @@ namespace API.Controllers.HoaDon_Controller
             {
                 return BadRequest($"Đã xảy ra lỗi: {ex.Message}");
             }
+        }
+
+        [HttpPost("tra-hang-tai-quay/{id_hoa_don}")]
+        [Authorize(Roles = "Admin,NhanVien")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> TraHangTaiQuay(Guid id_hoa_don, [FromBody] TraHangTaiQuayRequest request)
+        {
+            try
+            {
+                var id_nhan_vien = GetIdNhanVien();
+                if (id_nhan_vien == null)
+                    return Unauthorized("Không thể xác thực thông tin nhân viên");
+
+                // Kiểm tra hóa đơn tồn tại và lấy thông tin chi tiết
+                var hoaDon = await _hoaDonService.GetByIdWithIncludeAsync(id_hoa_don,
+                    q => q.Include(hd => hd.HoaDonChiTiets)
+                         .ThenInclude(hct => hct.SanPhamChiTiet)
+                         .Include(hd => hd.KhuyenMai));
+
+                if (hoaDon == null)
+                    return NotFound("Không tìm thấy hóa đơn");
+
+                // Kiểm tra trạng thái hóa đơn
+                if (hoaDon.trang_thai_hoa_don != "DaHoanThanh" && hoaDon.trang_thai_hoa_don != "DaThanhToan")
+                    return BadRequest("Chỉ có thể trả hàng cho đơn hàng đã hoàn thành");
+
+                // Kiểm tra thời gian trả hàng (trong vòng 7 ngày)
+                if ((DateTime.Now - hoaDon.ngay_tao).TotalDays > 7)
+                    return BadRequest("Đã quá thời gian cho phép trả hàng (7 ngày)");
+
+                // Thực hiện trả hàng trong transaction
+                var result = await _hoaDonService.ExecuteInTransactionAsync(async () =>
+                {
+                    // Cập nhật số lượng sản phẩm
+                    foreach (var chiTiet in hoaDon.HoaDonChiTiets)
+                    {
+                        if (chiTiet.SanPhamChiTiet != null)
+                        {
+                            chiTiet.SanPhamChiTiet.so_luong += chiTiet.so_luong;
+                            var updateResult = await _sanPhamChiTietService.UpdateAsync(chiTiet.SanPhamChiTiet);
+                            if (!updateResult) return false;
+                        }
+                    }
+
+                    // Giảm số lượng sử dụng khuyến mãi nếu có
+                    if (hoaDon.id_khuyen_mai.HasValue)
+                    {
+                        var khuyenMai = await _khuyenMaiService.GetByIdAsync(hoaDon.id_khuyen_mai.Value);
+                        if (khuyenMai != null)
+                        {
+                            khuyenMai.so_luong_da_su_dung = Math.Max(0, khuyenMai.so_luong_da_su_dung - 1);
+                            var updateResult = await _khuyenMaiService.UpdateAsync(khuyenMai);
+                            if (!updateResult) return false;
+                        }
+                    }
+                    // Hoàn lại số lượng giảm giá đã sử dụng
+                    var hoaDonChiTiets = await _hoaDonChiTietService.GetByConditionWithIncludeAsync(
+                        hct => hct.id_hoa_don == hoaDon.id_hoa_don,
+                        q => q.Include(hct => hct.SanPhamChiTiet)
+                             .ThenInclude(spct => spct.SanPhamChiTietGiamGias)
+                             .ThenInclude(spgg => spgg.GiamGia)
+                    );
+
+                    foreach (var chiTiet in hoaDonChiTiets)
+                    {
+                        if (chiTiet.SanPhamChiTiet?.SanPhamChiTietGiamGias != null)
+                        {
+                            // Tìm giảm giá đang được áp dụng cho sản phẩm này
+                            var giamGiaDangApDung = chiTiet.SanPhamChiTiet.SanPhamChiTietGiamGias
+                                .FirstOrDefault(gg => gg.GiamGia != null &&
+                                                    gg.GiamGia.trang_thai == "HoatDong" &&
+                                                    gg.GiamGia.thoi_gian_bat_dau <= DateTime.Now &&
+                                                    gg.GiamGia.thoi_gian_ket_thuc >= DateTime.Now);
+
+                            if (giamGiaDangApDung != null)
+                            {
+                                // Hoàn lại số lượng đã sử dụng của giảm giá
+                                giamGiaDangApDung.GiamGia.so_luong_da_su_dung -= chiTiet.so_luong;
+                                await _giamGiaService.UpdateAsync(giamGiaDangApDung.GiamGia);
+                            }
+                        }
+                    }
+
+                    // Cập nhật trạng thái hóa đơn
+                    hoaDon.trang_thai_hoa_don = "DaTraHang";
+                    hoaDon.ngay_sua = DateTime.Now;
+                    hoaDon.id_nhan_vien_xu_ly = id_nhan_vien;
+                    hoaDon.ghi_chu = $"{hoaDon.ghi_chu} - Đã trả hàng - Lý do: {request.ly_do}";
+
+                    var updateHoaDonResult = await _hoaDonService.UpdateAsync(hoaDon);
+                    if (!updateHoaDonResult) return false;
+
+                    // Gửi email thông báo
+                    await _hoaDonService.GuiEmailCapNhatTrangThaiAsync(id_hoa_don, "DaTraHang");
+
+                    return true;
+                });
+
+                if (!result)
+                    return BadRequest("Không thể xử lý yêu cầu trả hàng");
+
+                return Ok(new
+                {
+                    message = "Xử lý trả hàng thành công",
+                    hoa_don = await _hoaDonService.GetByIdHoaDonAdminDTOAsync(id_hoa_don)
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest($"Đã xảy ra lỗi: {ex.Message}");
+            }
+        }
+
+        public class TraHangTaiQuayRequest
+        {
+            [Required(ErrorMessage = "Vui lòng nhập lý do trả hàng")]
+            public string ly_do { get; set; }
         }
     }
 }
