@@ -36,7 +36,8 @@ namespace API.Services.Interfaces
         Task<(bool success, string message)> XacNhanDonHangAsync(Guid idHoaDon, Guid id_nhan_vien_xu_ly);
         Task<(bool success, string message)> CapNhatTrangThaiDonHangAsync(Guid idHoaDon, string trangThai, Guid id_nhan_vien_xu_ly);
         Task<(bool success, string message)> YeuCauTraHangAsync(Guid idHoaDon, Guid idKhachHang, string lyDoTraHang, IFormFile hinhAnhTraHang);
-        Task<(bool success, string message)> XacNhanTraHangAsync(Guid idHoaDon, Guid idNhanVien, string ghiChu);
+        Task<(bool success, string message)> XacNhanTraHangAsync(Guid idHoaDon, Guid idNhanVien);
         Task<(bool success, string message)> HoanThanhTraHangAsync(Guid idHoaDon, Guid idNhanVien);
+        Task<(bool success, string message)> TuChoiTraHangAsync(Guid idHoaDon, Guid idNhanVien, string lyDoTuChoi);
     }
 }

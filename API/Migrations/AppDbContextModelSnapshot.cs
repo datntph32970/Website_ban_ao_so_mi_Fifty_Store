@@ -154,19 +154,10 @@ namespace API.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<DateTime?>("ngay_hoan_thanh_tra_hang")
-                        .HasColumnType("datetime2");
-
                     b.Property<DateTime?>("ngay_sua")
                         .HasColumnType("datetime2");
 
                     b.Property<DateTime>("ngay_tao")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime?>("ngay_xac_nhan_tra_hang")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime?>("ngay_yeu_cau_tra_hang")
                         .HasColumnType("datetime2");
 
                     b.Property<decimal?>("phi_van_chuyen")
@@ -232,6 +223,9 @@ namespace API.Migrations
 
                     b.Property<decimal>("gia_tri_khuyen_mai_cua_hoa_don_cho_hdct")
                         .HasColumnType("decimal(18,2)");
+
+                    b.Property<Guid?>("id_giam_gia_cua_sp")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<Guid>("id_hoa_don")
                         .HasColumnType("uniqueidentifier");

@@ -54,9 +54,6 @@ namespace API.DbConects.Entities.Entities_Hoa_Don
         public virtual ICollection<HoaDonChiTiet>? HoaDonChiTiets { get; set; }
 
         public string? ly_do_tra_hang { get; set; }
-        public DateTime? ngay_yeu_cau_tra_hang { get; set; }
-        public DateTime? ngay_xac_nhan_tra_hang { get; set; }
-        public DateTime? ngay_hoan_thanh_tra_hang { get; set; }
         public string? hinh_anh_tra_hang { get; set; }
     }
 }

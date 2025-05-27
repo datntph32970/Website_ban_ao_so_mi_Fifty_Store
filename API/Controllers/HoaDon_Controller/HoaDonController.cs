@@ -316,6 +316,7 @@ namespace API.Controllers.HoaDon_Controller
 
                     hoaDon.id_khach_hang = Guid.Parse(dto.id_khach_hang);
                     hoaDon.ten_khach_hang = khachHang.ten_khach_hang;
+                    hoaDon.sdt_khach_hang = khachHang.so_dien_thoai;
                 }
                 else
                 {
@@ -323,6 +324,7 @@ namespace API.Controllers.HoaDon_Controller
                     hoaDon.id_khach_hang = null;
                     hoaDon.dia_chi_nhan_hang = null;
                     hoaDon.ten_khach_hang = null;
+                    hoaDon.sdt_khach_hang = null;
                 }
 
                 // Cập nhật khuyến mãi
@@ -964,8 +966,23 @@ namespace API.Controllers.HoaDon_Controller
                     if (hoaDonChiTiet.SanPhamChiTiet.so_luong < hoaDonChiTiet.so_luong)
                         return BadRequest($"Sản phẩm {hoaDonChiTiet.ten_san_pham} - {hoaDonChiTiet.ten_mau_sac} - {hoaDonChiTiet.ten_kich_co} không đủ số lượng");
 
-
-
+                    // Tìm giảm giá đang được áp dụng cho sản phẩm này
+                    var giamGiaDangApDung = hoaDonChiTiet.SanPhamChiTiet.SanPhamChiTietGiamGias
+                        .FirstOrDefault(gg => gg.GiamGia != null &&
+                                            gg.GiamGia.trang_thai == "HoatDong" &&
+                                            gg.GiamGia.thoi_gian_bat_dau <= DateTime.Now &&
+                                            gg.GiamGia.thoi_gian_ket_thuc >= DateTime.Now);
+                    if (giamGiaDangApDung != null)
+                    {
+                        hoaDonChiTiet.id_giam_gia_cua_sp = giamGiaDangApDung.id_giam_gia;
+                        await _hoaDonChiTietService.UpdateAsync(hoaDonChiTiet);
+                        var ggSP = await _giamGiaService.GetByIdAsync(giamGiaDangApDung.id_giam_gia);
+                        if (ggSP != null)
+                        {
+                            ggSP.so_luong_da_su_dung += hoaDonChiTiet.so_luong;
+                            await _giamGiaService.UpdateAsync(ggSP);
+                        }
+                    }
                 }
 
                 // Check payment method
@@ -1394,7 +1411,7 @@ namespace API.Controllers.HoaDon_Controller
                     hoaDon.trang_thai_hoa_don = "DaTraHang";
                     hoaDon.ngay_sua = DateTime.Now;
                     hoaDon.id_nhan_vien_xu_ly = id_nhan_vien;
-                    hoaDon.ghi_chu = $"{hoaDon.ghi_chu} - Đã trả hàng - Lý do: {request.ly_do}";
+                    hoaDon.ly_do_tra_hang = $"{request.ly_do}";
 
                     var updateHoaDonResult = await _hoaDonService.UpdateAsync(hoaDon);
                     if (!updateHoaDonResult) return false;
@@ -1451,13 +1468,13 @@ namespace API.Controllers.HoaDon_Controller
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> XacNhanTraHang(Guid id_hoa_don, [FromBody] XacNhanTraHangRequest request)
+        public async Task<IActionResult> XacNhanTraHang(Guid id_hoa_don)
         {
             var id_nhan_vien = GetIdNhanVien();
             if (!id_nhan_vien.HasValue)
                 return Unauthorized();
 
-            var result = await _hoaDonService.XacNhanTraHangAsync(id_hoa_don, id_nhan_vien.Value, request.ghi_chu);
+            var result = await _hoaDonService.XacNhanTraHangAsync(id_hoa_don, id_nhan_vien.Value);
             if (!result.success)
                 return BadRequest(result.message);
 
@@ -1483,6 +1500,38 @@ namespace API.Controllers.HoaDon_Controller
             return Ok(result.message);
         }
 
+        [HttpPut("tu-choi-tra-hang/{id_hoa_don}")]
+        [Authorize(Roles = "Admin,NhanVien")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> TuChoiTraHang(Guid id_hoa_don, [FromBody] TuChoiTraHangRequest request)
+        {
+            try
+            {
+                var id_nhan_vien = GetIdNhanVien();
+                if (!id_nhan_vien.HasValue)
+                    return Unauthorized("Không thể xác thực thông tin nhân viên");
+
+                var result = await _hoaDonService.TuChoiTraHangAsync(id_hoa_don, id_nhan_vien.Value, request.ly_do_tu_choi);
+                if (!result.success)
+                    return BadRequest(result.message);
+
+                return Ok(new { message = result.message });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest($"Đã xảy ra lỗi: {ex.Message}");
+            }
+        }
+
+        public class TuChoiTraHangRequest
+        {
+            [Required(ErrorMessage = "Vui lòng nhập lý do từ chối trả hàng")]
+            public string ly_do_tu_choi { get; set; }
+        }
+
         public class YeuCauTraHangRequest
         {
             [Required(ErrorMessage = "Vui lòng nhập lý do trả hàng")]
@@ -1490,12 +1539,6 @@ namespace API.Controllers.HoaDon_Controller
 
             [Required(ErrorMessage = "Vui lòng cung cấp hình ảnh sản phẩm")]
             public IFormFile hinh_anh_tra_hang { get; set; }
-        }
-
-        public class XacNhanTraHangRequest
-        {
-            [Required(ErrorMessage = "Vui lòng nhập ghi chú xác nhận")]
-            public string ghi_chu { get; set; }
         }
     }
 }

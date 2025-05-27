@@ -21,7 +21,7 @@ namespace API.Services.Implementations
         private readonly Dictionary<string, (DateTime ExpiryTime, object Data)> _cache = new();
         private const int CACHE_DURATION_MINUTES = 5;
         private static readonly string[] VALID_TRANG_THAI = new[] { "DaThanhToan", "DaHoanThanh" };
-        private static readonly string[] INVALID_TRANG_THAI_DON_HANG = new[] { "DaHuy", "DaTraHang", "DaHoanTraToanBo" };
+        private static readonly string[] INVALID_TRANG_THAI_DON_HANG = new[] { "DaHuy", "DaTraHang", "DaXacNhanTraHang", "DaHoanTraToanBo" };
 
         public ThongKeService(IBaseRepository<HoaDon> hoaDonRepository, IBaseRepository<NhanVien> nhanVienRepository, IBaseRepository<DanhMuc> danhMucRepository, IBaseRepository<HoaDonChiTiet> hoaDonChiTietRepository, IBaseRepository<SanPham> sanPhamRepository, IBaseRepository<SanPhamChiTiet> sanPhamChiTietRepository)
         {
@@ -636,6 +636,8 @@ namespace API.Services.Implementations
                     hdc.trang_thai != "HetHang" &&
                     hdc.trang_thai != "ChuaThanhToan" &&
                     hdc.trang_thai != "DaHuy" &&
+                    hdc.trang_thai != "DaTraHang" &&
+                    hdc.trang_thai != "DaXacNhanTraHang" &&
                     hdc.trang_thai != "DaHoanTraMotPhan");
 
                 var tongSoLuong = hoaDonChiTiet.Sum(hdc => hdc.so_luong);
