@@ -191,7 +191,6 @@ namespace API.Migrations
                     mo_ta = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     kieu_giam_gia = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     gia_tri_giam = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
-                    so_luong_toi_da = table.Column<int>(type: "int", nullable: false),
                     so_luong_da_su_dung = table.Column<int>(type: "int", nullable: false),
                     thoi_gian_bat_dau = table.Column<DateTime>(type: "datetime2", nullable: false),
                     thoi_gian_ket_thuc = table.Column<DateTime>(type: "datetime2", nullable: false),
@@ -601,7 +600,12 @@ namespace API.Migrations
                     id_cua_hang = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
                     id_khuyen_mai = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
                     id_phuong_thuc_thanh_toan = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
-                    trang_thai_hoa_don = table.Column<string>(type: "nvarchar(max)", nullable: false)
+                    trang_thai_hoa_don = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    ly_do_tra_hang = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    ngay_yeu_cau_tra_hang = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    ngay_xac_nhan_tra_hang = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    ngay_hoan_thanh_tra_hang = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    hinh_anh_tra_hang = table.Column<string>(type: "nvarchar(max)", nullable: true)
                 },
                 constraints: table =>
                 {
