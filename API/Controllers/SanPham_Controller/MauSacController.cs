@@ -114,6 +114,13 @@ namespace API.Controllers.SanPham_Controller
         [Authorize(Roles = "Admin,NhanVien")]
         public async Task<IActionResult> Delete(Guid id)
         {
+            var mauSac = await _mauSacServices.GetByIdWithIncludeAsync(id, q => q.Include(m => m.SanPhamChiTiets));
+            if (mauSac == null)
+                return NotFound("Không tìm thấy màu sắc");
+
+            if (mauSac.SanPhamChiTiets != null && mauSac.SanPhamChiTiets.Any())
+                return BadRequest("Không thể xóa màu sắc này vì đang có sản phẩm chi tiết đang sử dụng");
+
             var result = await _mauSacServices.DeleteAsync(id);
             if (result) return Ok("Xóa màu sắc thành công");
             return BadRequest("Đã có lỗi khi xóa màu sắc!");

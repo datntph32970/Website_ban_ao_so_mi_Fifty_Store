@@ -114,6 +114,13 @@ namespace API.Controllers.SanPham_Controller
         [Authorize(Roles = "Admin,NhanVien")]
         public async Task<IActionResult> Delete(Guid id)
         {
+            var kichCo = await _kichCoServices.GetByIdWithIncludeAsync(id, q => q.Include(k => k.SanPhamChiTiets));
+            if (kichCo == null)
+                return NotFound("Không tìm thấy kích cỡ");
+
+            if (kichCo.SanPhamChiTiets != null && kichCo.SanPhamChiTiets.Any())
+                return BadRequest("Không thể xóa kích cỡ này vì đang có sản phẩm chi tiết đang sử dụng");
+
             var result = await _kichCoServices.DeleteAsync(id);
             if (result) return Ok("Xóa kích cỡ thành công");
             return BadRequest("Đã có lỗi khi xóa kích cỡ!");

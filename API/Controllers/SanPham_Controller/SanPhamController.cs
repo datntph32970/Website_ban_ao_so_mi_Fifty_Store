@@ -528,8 +528,8 @@ namespace API.Controllers.SanPham_Controller
                 var kichCo = await _kichCoServices.GetByIdAsync(spct.id_kich_co);
                 var thongTinChiTiet = $"(Màu sắc: {mauSac?.ten_mau_sac}, Kích cỡ: {kichCo?.ten_kich_co})";
 
-                if (spct.so_luong <= 0)
-                    return BadRequest($"Số lượng sản phẩm chi tiết {thongTinChiTiet} phải lớn hơn 0");
+                if (spct.so_luong < 0)
+                    return BadRequest($"Số lượng sản phẩm chi tiết {thongTinChiTiet} phải lớn hơn hoặc bằng 0");
 
                 if (spct.gia_ban <= 0)
                     return BadRequest($"Giá bán sản phẩm chi tiết {thongTinChiTiet} phải lớn hơn 0");

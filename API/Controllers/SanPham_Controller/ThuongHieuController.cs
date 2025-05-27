@@ -103,6 +103,13 @@ namespace API.Controllers.SanPham_Controller
         [Authorize(Roles = "Admin,NhanVien")]
         public async Task<IActionResult> XoaThuongHieu(Guid id)
         {
+            var thuongHieu = await _thuongHieuService.GetByIdWithIncludeAsync(id, cl => cl.Include(c => c.SanPhams));
+            if (thuongHieu == null)
+                return NotFound("Không tìm thấy thương hiệu");
+
+            if (thuongHieu.SanPhams != null && thuongHieu.SanPhams.Any())
+                return BadRequest("Không thể xóa thương hiệu này vì đang có sản phẩm đang sử dụng");
+
             var result = await _thuongHieuService.DeleteAsync(id);
             if (!result)
                 return BadRequest("Đã có lỗi khi xóa Thương hiệu");

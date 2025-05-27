@@ -110,9 +110,16 @@ namespace API.Controllers.SanPham_Controller
 
         [HttpDelete]
         [Authorize(Roles = "Admin,NhanVien")]
-        public IActionResult Delete(Guid id)
+        public async Task<IActionResult> Delete(Guid id)
         {
-            var result = _danhMucServices.DeleteAsync(id).Result;
+            var danhMuc = await _danhMucServices.GetByIdWithIncludeAsync(id, cl => cl.Include(c => c.SanPhams));
+            if (danhMuc == null)
+                return NotFound("Không tìm thấy danh mục");
+
+            if (danhMuc.SanPhams != null && danhMuc.SanPhams.Any())
+                return BadRequest("Không thể xóa danh mục này vì đang có sản phẩm đang sử dụng");
+
+            var result = await _danhMucServices.DeleteAsync(id);
             if (result) return Ok("Xóa danh mục thành công");
             return BadRequest("Đã có lỗi khi xóa danh mục");
         }

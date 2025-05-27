@@ -103,9 +103,16 @@ namespace API.Controllers.SanPham_Controller
 
         [HttpDelete]
         [Authorize(Roles = "Admin,NhanVien")]
-        public IActionResult Delete(Guid id)
+        public async Task<IActionResult> Delete(Guid id)
         {
-            var result = _chatLieuServices.DeleteAsync(id).Result;
+            var chatLieu = await _chatLieuServices.GetByIdWithIncludeAsync(id, cl => cl.Include(c => c.SanPhams));
+            if (chatLieu == null)
+                return NotFound("Không tìm thấy chất liệu");
+
+            if (chatLieu.SanPhams != null && chatLieu.SanPhams.Any())
+                return BadRequest("Không thể xóa chất liệu này vì đang có sản phẩm đang sử dụng");
+
+            var result = await _chatLieuServices.DeleteAsync(id);
             if (result) return Ok("Xóa chất liệu thành công");
             return BadRequest("Đã có lỗi khi xóa chất liệu");
         }

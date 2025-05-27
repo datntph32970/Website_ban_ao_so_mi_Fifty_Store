@@ -282,6 +282,7 @@ namespace API.Services.Implementations
                     trang_thai = hoaDon.trang_thai_hoa_don,
                     ten_phuong_thuc_thanh_toan = hoaDon.PhuongThucThanhToan?.ten_phuong_thuc_thanh_toan,
                     ngay_tao = hoaDon.ngay_tao,
+                    ngay_sua = hoaDon.ngay_sua ?? hoaDon.ngay_tao,
                     nhanVienXuLy = hoaDon.NhanVienXuLy != null ? new NhanVien_HoaDonAdminDTO
                     {
                         id_nhan_vien = hoaDon.id_nhan_vien_xu_ly,
@@ -348,6 +349,7 @@ namespace API.Services.Implementations
                 trang_thai = hoaDon.trang_thai_hoa_don,
                 ten_phuong_thuc_thanh_toan = hoaDon.PhuongThucThanhToan?.ten_phuong_thuc_thanh_toan,
                 ngay_tao = hoaDon.ngay_tao,
+                ngay_sua = hoaDon.ngay_sua ?? hoaDon.ngay_tao,
                 khuyenMai = hoaDon.KhuyenMai == null ? null : new KhuyenMai_HoaDonAdminDTO
                 {
                     id_khuyen_mai = hoaDon.KhuyenMai.id_khuyen_mai,
@@ -1077,9 +1079,11 @@ namespace API.Services.Implementations
                 return (false, "Cửa hàng không tồn tại");
             hoaDon.trang_thai_hoa_don = "DaThanhToan";
             hoaDon.id_cua_hang = cuaHang.id_cua_hang;
+            hoaDon.ngay_sua = DateTime.Now;
             foreach (var hct in hoaDon.HoaDonChiTiets)
             {
                 hct.trang_thai = "DaThanhToan";
+                hct.ngay_sua = DateTime.Now;
                 hct.gia_tri_khuyen_mai_cua_hoa_don_cho_hdct = hoaDon.so_tien_khuyen_mai.HasValue ? hoaDon.so_tien_khuyen_mai.Value / hoaDon.HoaDonChiTiets.Count : 0;
                 var updateHoaDonChiTiet = await _hoaDonChiTietRepository.UpdateAsync(hct);
                 if (!updateHoaDonChiTiet)
@@ -2123,12 +2127,17 @@ namespace API.Services.Implementations
 
                 if (!IsValidStatusTransition(hoaDon.trang_thai_hoa_don, "DaHuy"))
                     return (false, "Không thể hủy đơn hàng ở trạng thái hiện tại");
+                if (isKhachHangHuy)
+                    hoaDon.ly_do_huy_don_hang = "Khách hàng hủy - " + lyDo;
 
-                hoaDon.ly_do_huy_don_hang = lyDo;
+                hoaDon.ngay_sua = DateTime.Now;
+
 
                 if (id_nhan_vien_xu_ly.HasValue)
+                {
                     hoaDon.id_nhan_vien_xu_ly = id_nhan_vien_xu_ly;
-
+                    hoaDon.ly_do_huy_don_hang = "Nhân viên hủy - " + lyDo;
+                }
                 var success = await _transactionHelper.XuLyHoanTienAsync(hoaDon);
                 if (hoaDon.PhuongThucThanhToan.ma_phuong_thuc_thanh_toan == "PTVNPAY")
                     await HoanTienVNPayAsync(hoaDon.id_hoa_don);
