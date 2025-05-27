@@ -1,4 +1,7 @@
 using API.DbConects.DTOs.Admin.TaiKhoan;
+using API.DbConects.Entities.Entities_Hoa_Don;
+using API.DbConects.Entities.Entities_Khuyen_Mai;
+using API.DbConects.Entities.Entities_San_Pham;
 using API.DbConects.Entities.Entities_Tai_Khoan;
 using API.Services.Interfaces;
 using API.Services.JwtServices;
@@ -20,17 +23,62 @@ namespace API.Controllers.TaiKhoan_Controller
         private readonly IBaseService<TaiKhoan> _taiKhoanService;
         private readonly IJwtServices _jwtServices;
         private readonly IEmailService _emailService;
+        private readonly IBaseService<XuatXu> _xuatXuService;
+        private readonly IBaseService<HoaDon> _hoaDonService;
+        private readonly IBaseService<HoaDonChiTiet> _hoaDonChiTietService;
+        private readonly IBaseService<SanPham> _sanPhamService;
+        private readonly IBaseService<SanPhamChiTiet> _sanPhamChiTietService;
+        private readonly IBaseService<ThuongHieu> _thuongHieuService;
+        private readonly IBaseService<MauSac> _mauSacService;
+        private readonly IBaseService<KieuDang> _kieuDangService;
+        private readonly IBaseService<KichCo> _kichCoService;
+        private readonly IBaseService<DanhMuc> _danhMucService;
+        private readonly IBaseService<KhachHang> _khachHangService;
+        private readonly IBaseService<ChatLieu> _chatLieuService;
+        private readonly IBaseService<GiamGia> _giamGiaService;
+        private readonly IBaseService<KhuyenMai> _khuyenMaiService;
+        private readonly IBaseService<HinhAnh> _hinhAnhService;
 
         public NhanVienController(
             IBaseService<NhanVien> nhanVienService,
             IBaseService<TaiKhoan> taiKhoanService,
             IJwtServices jwtServices,
-            IEmailService emailService)
+            IEmailService emailService,
+            IBaseService<XuatXu> xuatXuService,
+            IBaseService<KhachHang> khachHangService,
+            IBaseService<SanPham> sanPhamService,
+            IBaseService<SanPhamChiTiet> sanPhamChiTietService,
+            IBaseService<ThuongHieu> thuongHieuService,
+            IBaseService<MauSac> mauSacService,
+            IBaseService<KieuDang> kieuDangService,
+            IBaseService<KichCo> kichCoService,
+            IBaseService<ChatLieu> chatLieuService,
+            IBaseService<GiamGia> giamGiaService,
+            IBaseService<KhuyenMai> khuyenMaiService,
+            IBaseService<DanhMuc> danhMucService,
+             IBaseService<HoaDon> hoaDonService,
+             IBaseService<HoaDonChiTiet> hoaDonChiTietService,
+            IBaseService<HinhAnh> hinhAnhService)
         {
             _nhanVienService = nhanVienService;
             _taiKhoanService = taiKhoanService;
             _jwtServices = jwtServices;
             _emailService = emailService;
+            _xuatXuService = xuatXuService;
+            _sanPhamService = sanPhamService;
+            _sanPhamChiTietService = sanPhamChiTietService;
+            _thuongHieuService = thuongHieuService;
+            _mauSacService = mauSacService;
+            _kieuDangService = kieuDangService;
+            _kichCoService = kichCoService;
+            _chatLieuService = chatLieuService;
+            _giamGiaService = giamGiaService;
+            _khuyenMaiService = khuyenMaiService;
+            _hinhAnhService = hinhAnhService;
+            _danhMucService = danhMucService;
+            _khachHangService = khachHangService;
+            _hoaDonService = hoaDonService;
+            _hoaDonChiTietService = hoaDonChiTietService;
         }
 
         [HttpGet("get-all-nhan-vien")]
@@ -312,90 +360,112 @@ namespace API.Controllers.TaiKhoan_Controller
         }
         [HttpDelete("delete-nhan-vien")]
         [Authorize(Roles = "Admin")]
-
         public async Task<IActionResult> DeleteNhanVien(XoaNhanVienAdminDTO xoaNhanVienAdminDTO)
         {
-            // Tìm kiếm nhân viên với các bảng liên quan
-            var nhanVien = await _nhanVienService.GetByIdWithIncludeAsync(
-                Guid.Parse(xoaNhanVienAdminDTO.id_nhan_vien),
-                q => q.Include(n => n.XulyHoaDons)
-                      .Include(n => n.TaoXuatXus)
-                      .Include(n => n.SuaXuatXus)
-                      .Include(n => n.TaoSanPhamChiTiets)
-                      .Include(n => n.SuaSanPhamChiTiets)
-                      .Include(n => n.TaoSanPhams)
-                      .Include(n => n.SuaSanPhams)
-                      .Include(n => n.TaoThuongHieus)
-                      .Include(n => n.SuaThuongHieus)
-                      .Include(n => n.TaoMauSacs)
-                      .Include(n => n.SuaMauSacs)
-                      .Include(n => n.TaoKieuDangs)
-                      .Include(n => n.SuaKieuDangs)
-                      .Include(n => n.TaoKichCos)
-                      .Include(n => n.SuaKichCos)
-                      .Include(n => n.TaoHinhAnhs)
-                      .Include(n => n.SuaHinhAnhs)
-                      .Include(n => n.TaoChatLieus)
-                      .Include(n => n.SuaChatLieus)
-                      .Include(n => n.TaoGiamGias)
-                      .Include(n => n.SuaGiamGias)
-                      .Include(n => n.TaoKhuyenMais)
-                      .Include(n => n.SuaKhuyenMais)
-            );
-
-            // Kiểm tra nếu không tìm thấy nhân viên
-            if (nhanVien == null)
+            try
             {
-                return NotFound("Nhân viên không tồn tại.");
-            }
+                // Kiểm tra ID nhân viên
+                if (string.IsNullOrEmpty(xoaNhanVienAdminDTO.id_nhan_vien))
+                    return BadRequest("ID nhân viên không được để trống");
 
-            // Kiểm tra nếu nhân viên có dữ liệu liên quan
-            if (nhanVien.XulyHoaDons?.Any() == true ||
-                nhanVien.TaoXuatXus?.Any() == true ||
-                nhanVien.SuaXuatXus?.Any() == true ||
-                nhanVien.TaoSanPhamChiTiets?.Any() == true ||
-                nhanVien.SuaSanPhamChiTiets?.Any() == true ||
-                nhanVien.TaoSanPhams?.Any() == true ||
-                nhanVien.SuaSanPhams?.Any() == true ||
-                nhanVien.TaoThuongHieus?.Any() == true ||
-                nhanVien.SuaThuongHieus?.Any() == true ||
-                nhanVien.TaoMauSacs?.Any() == true ||
-                nhanVien.SuaMauSacs?.Any() == true ||
-                nhanVien.TaoKieuDangs?.Any() == true ||
-                nhanVien.SuaKieuDangs?.Any() == true ||
-                nhanVien.TaoKichCos?.Any() == true ||
-                nhanVien.SuaKichCos?.Any() == true ||
-                nhanVien.TaoHinhAnhs?.Any() == true ||
-                nhanVien.SuaHinhAnhs?.Any() == true ||
-                nhanVien.TaoChatLieus?.Any() == true ||
-                nhanVien.SuaChatLieus?.Any() == true ||
-                nhanVien.TaoGiamGias?.Any() == true ||
-                nhanVien.SuaGiamGias?.Any() == true ||
-                nhanVien.TaoKhuyenMais?.Any() == true ||
-                nhanVien.SuaKhuyenMais?.Any() == true)
-            {
-                return BadRequest("Không thể xóa nhân viên vì đã có dữ liệu liên quan.");
-            }
+                // Lấy thông tin nhân viên và tài khoản
+                var nhanVien = await _nhanVienService.GetByIdWithIncludeAsync(
+                    Guid.Parse(xoaNhanVienAdminDTO.id_nhan_vien),
+                    q => q.Include(n => n.TaiKhoanNhanVien)
+                );
 
-            // Thực hiện xóa nhân viên
-            var result = await _nhanVienService.ExecuteInTransactionAsync(async () =>
-            {
-                var deleteNhanVienResult = await _nhanVienService.DeleteAsync(nhanVien.id_nhan_vien);
-                if (!deleteNhanVienResult) return false;
-                var taiKhoan = await _taiKhoanService.GetByIdAsync(nhanVien.id_tai_khoan);
-                if (taiKhoan != null)
+                if (nhanVien == null)
+                    return NotFound("Không tìm thấy nhân viên");
+
+                // Kiểm tra tài khoản cố định
+                if (nhanVien.TaiKhoanNhanVien?.ma_tai_khoan == "TK00000001")
+                    return BadRequest("Không thể xóa tài khoản cố định của hệ thống");
+
+                // Kiểm tra không cho phép xóa chính mình
+                var token = HttpContext.Request.Headers["Authorization"].FirstOrDefault()?.Split(" ").Last();
+                var currentUserId = _jwtServices.GetUserIdFromToken(token);
+                if (currentUserId == nhanVien.id_tai_khoan)
+                    return BadRequest("Không thể xóa tài khoản của chính mình");
+
+                // Kiểm tra dữ liệu liên quan
+                var hasRelatedData = await CheckRelatedData(nhanVien.id_nhan_vien);
+                if (hasRelatedData)
+                    return BadRequest("Không thể xóa nhân viên vì đã có dữ liệu liên quan");
+
+                // Thực hiện xóa trong transaction
+                var result = await _nhanVienService.ExecuteInTransactionAsync(async () =>
                 {
-                    var deleteTaiKhoanResult = await _taiKhoanService.DeleteAsync(taiKhoan.id_tai_khoan);
-                    if (!deleteTaiKhoanResult) return false;
-                }
-                return true;
-            });
-            if (!result)
-            {
-                return BadRequest("Lỗi khi xóa nhân viên.");
-            }
+                    // Xóa nhân viên
+                    var deleteNhanVienResult = await _nhanVienService.DeleteAsync(nhanVien.id_nhan_vien);
+                    if (!deleteNhanVienResult) return false;
 
-            return Ok("Xóa nhân viên thành công.");
+                    // Xóa tài khoản
+                    if (nhanVien.TaiKhoanNhanVien != null)
+                    {
+                        var deleteTaiKhoanResult = await _taiKhoanService.DeleteAsync(nhanVien.TaiKhoanNhanVien.id_tai_khoan);
+                        if (!deleteTaiKhoanResult) return false;
+                    }
+
+                    return true;
+                });
+
+                if (!result)
+                    return BadRequest("Lỗi khi xóa nhân viên");
+
+                return Ok("Xóa nhân viên thành công");
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Lỗi server: {ex.Message}");
+            }
+        }
+
+        private async Task<bool> CheckRelatedData(Guid nhanVienId)
+        {
+            // Kiểm tra hóa đơn
+            var hasHoaDon = await _hoaDonService.ExistsAsync(n =>
+                n.id_nhan_vien_xu_ly == nhanVienId);
+            var hasHoaDonChiTiet = await _hoaDonChiTietService.ExistsAsync(n =>
+                            n.id_nhan_vien_xu_ly == nhanVienId);
+            // Kiểm tra xuất xứ
+            var hasXuatXu = await _xuatXuService.ExistsAsync(x =>
+                x.id_nguoi_tao == nhanVienId || x.id_nguoi_sua == nhanVienId);
+
+            // Kiểm tra sản phẩm
+            var hasSanPham = await _sanPhamService.ExistsAsync(x =>
+                x.id_nguoi_tao == nhanVienId || x.id_nguoi_sua == nhanVienId);
+
+            // Kiểm tra sản phẩm chi tiết
+            var hasSanPhamChiTiet = await _sanPhamChiTietService.ExistsAsync(x =>
+                x.id_nguoi_tao == nhanVienId || x.id_nguoi_sua == nhanVienId);
+
+            // Kiểm tra thuộc tính sản phẩm
+            var hasThuongHieu = await _thuongHieuService.ExistsAsync(x =>
+                x.id_nguoi_tao == nhanVienId || x.id_nguoi_sua == nhanVienId);
+            var hasMauSac = await _mauSacService.ExistsAsync(x =>
+                x.id_nguoi_tao == nhanVienId || x.id_nguoi_sua == nhanVienId);
+            var hasKieuDang = await _kieuDangService.ExistsAsync(x =>
+                x.id_nguoi_tao == nhanVienId || x.id_nguoi_sua == nhanVienId);
+            var hasKichCo = await _kichCoService.ExistsAsync(x =>
+                x.id_nguoi_tao == nhanVienId || x.id_nguoi_sua == nhanVienId);
+            var hasChatLieu = await _chatLieuService.ExistsAsync(x =>
+                x.id_nguoi_tao == nhanVienId || x.id_nguoi_sua == nhanVienId);
+            var hasDanhMuc = await _danhMucService.ExistsAsync(x =>
+                            x.id_nguoi_tao == nhanVienId || x.id_nguoi_sua == nhanVienId);
+
+            // Kiểm tra khuyến mãi
+            var hasGiamGia = await _giamGiaService.ExistsAsync(x =>
+                x.id_nguoi_tao == nhanVienId || x.id_nguoi_cap_nhat == nhanVienId);
+            var hasKhuyenMai = await _khuyenMaiService.ExistsAsync(x =>
+                x.id_nguoi_tao == nhanVienId || x.id_nguoi_sua == nhanVienId);
+
+            // Kiểm tra hình ảnh
+            var hasHinhAnh = await _hinhAnhService.ExistsAsync(x =>
+                x.id_nguoi_tao == nhanVienId || x.id_nguoi_sua == nhanVienId);
+
+            return hasHoaDon || hasXuatXu || hasSanPham || hasSanPhamChiTiet || hasHoaDonChiTiet || hasDanhMuc ||
+                   hasThuongHieu || hasMauSac || hasKieuDang || hasKichCo ||
+                   hasChatLieu || hasGiamGia || hasKhuyenMai || hasHinhAnh;
         }
         [HttpGet("search-nhan-vien")]
         [Authorize(Roles = "Admin")]

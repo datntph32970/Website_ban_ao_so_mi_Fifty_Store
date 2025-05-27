@@ -105,9 +105,16 @@ namespace API.Controllers.SanPham_Controller
 
         [HttpDelete]
         [Authorize(Roles = "Admin,NhanVien")]
-        public IActionResult Delete(Guid id)
+        public async Task<IActionResult> Delete(Guid id)
         {
-            var result = _kieuDangServices.DeleteAsync(id).Result;
+            var kieuDang = await _kieuDangServices.GetByIdWithIncludeAsync(id, cl => cl.Include(c => c.SanPhams));
+            if (kieuDang == null)
+                return NotFound("Không tìm thấy kiểu dáng");
+
+            if (kieuDang.SanPhams != null && kieuDang.SanPhams.Any())
+                return BadRequest("Không thể xóa kiểu dáng này vì đang có sản phẩm đang sử dụng");
+
+            var result = await _kieuDangServices.DeleteAsync(id);
             if (result) return Ok("Xóa kiểu dáng thành công");
             return BadRequest("Đã có lỗi khi xóa kiểu dáng");
         }
