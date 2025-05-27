@@ -53,6 +53,7 @@ namespace API.DbConects.Entities.Entities_Hoa_Don
         public virtual PhuongThucThanhToan? PhuongThucThanhToan { get; set; }
         public virtual ICollection<HoaDonChiTiet>? HoaDonChiTiets { get; set; }
 
-
+        public string? ly_do_tra_hang { get; set; }
+        public string? hinh_anh_tra_hang { get; set; }
     }
 }

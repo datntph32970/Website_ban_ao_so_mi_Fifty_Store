@@ -12,6 +12,7 @@ using Microsoft.VisualBasic;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using System.Runtime.CompilerServices;
+using System.Text;
 
 namespace API.Services.Implementations
 {
@@ -27,7 +28,11 @@ namespace API.Services.Implementations
         DaHoanThanh,
         DaHuy,
         HetHang,
-        ChoTaiQuay
+        ChoTaiQuay,
+        DangYeuCauTraHang,
+        DaXacNhanTraHang,
+        DaTraHang,
+        DaTuChoiTraHang
     }
 
     public class TransactionHelper
@@ -107,7 +112,6 @@ namespace API.Services.Implementations
                         await _khuyenMaiServices.UpdateAsync(khuyenMai);
                     }
                 }
-
 
 
                 return await _hoaDonRepository.UpdateAsync(hoaDon);
@@ -263,9 +267,9 @@ namespace API.Services.Implementations
                     id_hoa_don = hoaDon.id_hoa_don,
                     ma_hoa_don = hoaDon.ma_hoa_don,
                     id_khach_hang = hoaDon.id_khach_hang != null ? hoaDon.id_khach_hang : null,
-                    ten_khach_hang = hoaDon.id_khach_hang != null ? hoaDon.KhachHang.ten_khach_hang : "Khách lẻ",
-                    ten_nguoi_xu_ly = hoaDon.NhanVienXuLy?.ten_nhan_vien,
-                    sdt_khach_hang = hoaDon.id_khach_hang != null ? hoaDon.KhachHang.so_dien_thoai : null,
+                    ten_khach_hang = !string.IsNullOrEmpty(hoaDon.ten_khach_hang) ? hoaDon.ten_khach_hang : (!string.IsNullOrEmpty(hoaDon.KhachHang?.ten_khach_hang) ? hoaDon.KhachHang?.ten_khach_hang : "Khách lẻ"),
+                    ten_nguoi_xu_ly = hoaDon.NhanVienXuLy?.ten_nhan_vien ?? "N/A",
+                    sdt_khach_hang = !string.IsNullOrEmpty(hoaDon.sdt_khach_hang) ? hoaDon.sdt_khach_hang : (!string.IsNullOrEmpty(hoaDon.KhachHang?.so_dien_thoai) ? hoaDon.KhachHang?.so_dien_thoai : ""),
                     dia_chi_nhan_hang = hoaDon.id_khach_hang != null ? hoaDon.dia_chi_nhan_hang : null,
                     ghi_chu = hoaDon.ghi_chu,
                     loai_hoa_don = hoaDon.loai_hoa_don,
@@ -280,6 +284,8 @@ namespace API.Services.Implementations
                     ten_phuong_thuc_thanh_toan = hoaDon.PhuongThucThanhToan?.ten_phuong_thuc_thanh_toan,
                     ngay_tao = hoaDon.ngay_tao,
                     ngay_sua = hoaDon.ngay_sua ?? hoaDon.ngay_tao,
+                    ly_do_tra_hang = hoaDon.ly_do_tra_hang,
+                    hinh_anh_tra_hang = hoaDon.hinh_anh_tra_hang,
                     nhanVienXuLy = hoaDon.NhanVienXuLy != null ? new NhanVien_HoaDonAdminDTO
                     {
                         id_nhan_vien = hoaDon.id_nhan_vien_xu_ly,
@@ -324,14 +330,16 @@ namespace API.Services.Implementations
             var tongTienDonHang = await TinhTongTienDonHang(hoaDon.id_hoa_don);
             var (tongTienSauKhuyenMai, giaTriKhuyenMai) = await CapNhatTongTienVaGiaTriKhuyenMaiChoHoaDon(hoaDon);
 
+
+
             return new HoaDonAdminDTO
             {
                 id_hoa_don = hoaDon.id_hoa_don,
                 ma_hoa_don = hoaDon.ma_hoa_don,
                 id_khach_hang = hoaDon.id_khach_hang != null ? hoaDon.id_khach_hang : null,
-                ten_khach_hang = hoaDon.id_khach_hang != null ? hoaDon.KhachHang.ten_khach_hang : "Khách lẻ",
-                ten_nguoi_xu_ly = hoaDon.NhanVienXuLy?.ten_nhan_vien,
-                sdt_khach_hang = hoaDon.id_khach_hang != null ? hoaDon.KhachHang.so_dien_thoai : null,
+                ten_khach_hang = !string.IsNullOrEmpty(hoaDon.ten_khach_hang) ? hoaDon.ten_khach_hang : "Khách lẻ",
+                ten_nguoi_xu_ly = hoaDon.NhanVienXuLy?.ten_nhan_vien ?? "N/A",
+                sdt_khach_hang = !string.IsNullOrEmpty(hoaDon.sdt_khach_hang) ? hoaDon.sdt_khach_hang : "",
                 dia_chi_nhan_hang = hoaDon.id_khach_hang != null ? hoaDon.dia_chi_nhan_hang : null,
                 ghi_chu = hoaDon.ghi_chu,
                 ly_do_huy_don_hang = hoaDon.ly_do_huy_don_hang,
@@ -347,6 +355,8 @@ namespace API.Services.Implementations
                 ten_phuong_thuc_thanh_toan = hoaDon.PhuongThucThanhToan?.ten_phuong_thuc_thanh_toan,
                 ngay_tao = hoaDon.ngay_tao,
                 ngay_sua = hoaDon.ngay_sua ?? hoaDon.ngay_tao,
+                ly_do_tra_hang = hoaDon.ly_do_tra_hang,
+                hinh_anh_tra_hang = hoaDon.hinh_anh_tra_hang,
                 khuyenMai = hoaDon.KhuyenMai == null ? null : new KhuyenMai_HoaDonAdminDTO
                 {
                     id_khuyen_mai = hoaDon.KhuyenMai.id_khuyen_mai,
@@ -506,22 +516,22 @@ namespace API.Services.Implementations
 
 
 
-                    if (hoaDonChiTiet.SanPhamChiTiet?.SanPhamChiTietGiamGias != null)
-                    {
-                        // Tìm giảm giá đang được áp dụng cho sản phẩm này
-                        var giamGiaDangApDung = hoaDonChiTiet.SanPhamChiTiet.SanPhamChiTietGiamGias
-                            .FirstOrDefault(gg => gg.GiamGia != null &&
-                                                gg.GiamGia.trang_thai == "HoatDong" &&
-                                                gg.GiamGia.thoi_gian_bat_dau <= DateTime.Now &&
-                                                gg.GiamGia.thoi_gian_ket_thuc >= DateTime.Now);
+                    // if (hoaDonChiTiet.SanPhamChiTiet?.SanPhamChiTietGiamGias != null)
+                    // {
+                    //     // Tìm giảm giá đang được áp dụng cho sản phẩm này
+                    //     var giamGiaDangApDung = hoaDonChiTiet.SanPhamChiTiet.SanPhamChiTietGiamGias
+                    //         .FirstOrDefault(gg => gg.GiamGia != null &&
+                    //                             gg.GiamGia.trang_thai == "HoatDong" &&
+                    //                             gg.GiamGia.thoi_gian_bat_dau <= DateTime.Now &&
+                    //                             gg.GiamGia.thoi_gian_ket_thuc >= DateTime.Now);
 
-                        if (giamGiaDangApDung != null)
-                        {
-                            // Hoàn lại số lượng đã sử dụng của giảm giá
-                            giamGiaDangApDung.GiamGia.so_luong_da_su_dung -= hoaDonChiTiet.so_luong;
-                            await _giamGiaServices.UpdateAsync(giamGiaDangApDung.GiamGia);
-                        }
-                    }
+                    //     if (giamGiaDangApDung != null)
+                    //     {
+                    //         // Hoàn lại số lượng đã sử dụng của giảm giá
+                    //         giamGiaDangApDung.GiamGia.so_luong_da_su_dung -= hoaDonChiTiet.so_luong;
+                    //         await _giamGiaServices.UpdateAsync(giamGiaDangApDung.GiamGia);
+                    //     }
+                    // }
                     // Cập nhật tổng tiền hóa đơn
                     await CapNhatTongTienVaGiaTriKhuyenMai(hoaDonChiTiet.id_hoa_don);
                     return true;
@@ -576,24 +586,24 @@ namespace API.Services.Implementations
             // Kiểm tra số lượng trong kho sau khi thay đổi
             if (sanPhamChiTiet.so_luong < soLuongThayDoi)
                 return (false, $"Số lượng sản phẩm trong kho không đủ. Còn lại: {sanPhamChiTiet.so_luong}");
-            // Cập nhật số lượng giảm giá đã sử dụng
-            if (sanPhamChiTiet.SanPhamChiTietGiamGias != null)
-            {
-                var giamGiaDangApDung = sanPhamChiTiet.SanPhamChiTietGiamGias
-                    .FirstOrDefault(gg => gg.GiamGia != null &&
-                                        gg.GiamGia.trang_thai == "HoatDong" &&
-                                        gg.GiamGia.thoi_gian_bat_dau <= DateTime.Now &&
-                                        gg.GiamGia.thoi_gian_ket_thuc >= DateTime.Now);
+            // // Cập nhật số lượng giảm giá đã sử dụng
+            // if (sanPhamChiTiet.SanPhamChiTietGiamGias != null)
+            // {
+            //     var giamGiaDangApDung = sanPhamChiTiet.SanPhamChiTietGiamGias
+            //         .FirstOrDefault(gg => gg.GiamGia != null &&
+            //                             gg.GiamGia.trang_thai == "HoatDong" &&
+            //                             gg.GiamGia.thoi_gian_bat_dau <= DateTime.Now &&
+            //                             gg.GiamGia.thoi_gian_ket_thuc >= DateTime.Now);
 
-                if (giamGiaDangApDung != null)
-                {
-                    // Cập nhật số lượng đã sử dụng của giảm giá
-                    giamGiaDangApDung.GiamGia.so_luong_da_su_dung += soLuongThayDoi;
-                    var updateGiamGiaResult = await _giamGiaServices.UpdateAsync(giamGiaDangApDung.GiamGia);
-                    if (!updateGiamGiaResult)
-                        return (false, "Không thể cập nhật số lượng giảm giá đã sử dụng");
-                }
-            }
+            //     if (giamGiaDangApDung != null)
+            //     {
+            //         // Cập nhật số lượng đã sử dụng của giảm giá
+            //         giamGiaDangApDung.GiamGia.so_luong_da_su_dung += soLuongThayDoi;
+            //         var updateGiamGiaResult = await _giamGiaServices.UpdateAsync(giamGiaDangApDung.GiamGia);
+            //         if (!updateGiamGiaResult)
+            //             return (false, "Không thể cập nhật số lượng giảm giá đã sử dụng");
+            //     }
+            // }
             // Cập nhật số lượng sản phẩm chi tiết
             sanPhamChiTiet.so_luong -= soLuongThayDoi;
             var updateSanPhamChiTiet = await _sanPhamChiTietRepository.UpdateAsync(sanPhamChiTiet);
@@ -706,12 +716,12 @@ namespace API.Services.Implementations
                                             gg.GiamGia.thoi_gian_bat_dau <= DateTime.Now &&
                                             gg.GiamGia.thoi_gian_ket_thuc >= DateTime.Now);
 
-                    if (giamGiaDangApDung != null)
-                    {
-                        // Hoàn lại số lượng đã sử dụng của giảm giá
-                        giamGiaDangApDung.GiamGia.so_luong_da_su_dung += chiTiet.so_luong;
-                        await _giamGiaServices.UpdateAsync(giamGiaDangApDung.GiamGia);
-                    }
+                    // if (giamGiaDangApDung != null)
+                    // {
+                    //     // Hoàn lại số lượng đã sử dụng của giảm giá
+                    //     giamGiaDangApDung.GiamGia.so_luong_da_su_dung += chiTiet.so_luong;
+                    //     await _giamGiaServices.UpdateAsync(giamGiaDangApDung.GiamGia);
+                    // }
                 }
             }
 
@@ -1039,7 +1049,8 @@ namespace API.Services.Implementations
                     don_gia = ct.don_gia,                    // Giá gốc lúc mua
                     gia_sau_giam_gia = ct.gia_sau_giam_gia,  // Giá sau giảm giá lúc mua
                     gia_tri_khuyen_mai_cua_hoa_don_cho_hdct = ct.gia_tri_khuyen_mai_cua_hoa_don_cho_hdct,
-                    thanh_tien = ct.thanh_tien,              // Thành tiền lúc mua
+                    thanh_tien = ct.thanh_tien,
+                    id_giam_gia_cua_sp = ct.id_giam_gia_cua_sp == null ? null : ct.id_giam_gia_cua_sp.ToString(),          // Thành tiền lúc mua
                     ghi_chu = ct.ghi_chu,
                     trang_thai = ct.trang_thai,
                     url_anh = ct.SanPhamChiTiet.HinhAnhSanPhamChiTiets.FirstOrDefault()?.HinhAnhs?.url ?? ct.SanPhamChiTiet.SanPham.anhMacDinh?.url,
@@ -1060,7 +1071,7 @@ namespace API.Services.Implementations
         }
         public async Task<(bool success, string message)> ThanhToanHoaDonChoTaiQuay(Guid id_hoa_don)
         {
-            var hoaDon = await _hoaDonRepository.GetByIdWithIncludeAsync(id_hoa_don, q => q.Include(hd => hd.HoaDonChiTiets));
+            var hoaDon = await _hoaDonRepository.GetByIdWithIncludeAsync(id_hoa_don, q => q.Include(hd => hd.HoaDonChiTiets).ThenInclude(hd => hd.SanPhamChiTiet).ThenInclude(hd => hd.SanPhamChiTietGiamGias).ThenInclude(hd => hd.GiamGia));
             if (hoaDon == null)
                 return (false, "Hóa đơn không tồn tại");
             if (hoaDon.trang_thai_hoa_don != "ChoTaiQuay")
@@ -1082,6 +1093,29 @@ namespace API.Services.Implementations
                 hct.trang_thai = "DaThanhToan";
                 hct.ngay_sua = DateTime.Now;
                 hct.gia_tri_khuyen_mai_cua_hoa_don_cho_hdct = hoaDon.so_tien_khuyen_mai.HasValue ? hoaDon.so_tien_khuyen_mai.Value / hoaDon.HoaDonChiTiets.Count : 0;
+
+                if (hct.SanPhamChiTiet?.SanPhamChiTietGiamGias != null)
+                {
+                    // Tìm giảm giá đang được áp dụng cho sản phẩm này
+                    var giamGiaDangApDung = hct.SanPhamChiTiet.SanPhamChiTietGiamGias
+                        .FirstOrDefault(gg => gg.GiamGia != null &&
+                                            gg.GiamGia.trang_thai == "HoatDong" &&
+                                            gg.GiamGia.thoi_gian_bat_dau <= DateTime.Now &&
+                                            gg.GiamGia.thoi_gian_ket_thuc >= DateTime.Now);
+                    if (giamGiaDangApDung != null)
+                    {
+                        hct.id_giam_gia_cua_sp = giamGiaDangApDung.id_giam_gia == null ? null : giamGiaDangApDung.id_giam_gia;
+                        var ggSP = await _giamGiaRepository.GetByIdAsync(giamGiaDangApDung.id_giam_gia);
+                        if (ggSP != null)
+                        {
+                            ggSP.so_luong_da_su_dung += hct.so_luong;
+                            await _giamGiaRepository.UpdateAsync(ggSP);
+                        }
+
+                    }
+                }
+
+
                 var updateHoaDonChiTiet = await _hoaDonChiTietRepository.UpdateAsync(hct);
                 if (!updateHoaDonChiTiet)
                     return (false, "Cập nhật trạng thái hóa đơn chi tiết thất bại");
@@ -1356,29 +1390,1070 @@ namespace API.Services.Implementations
                 return (false, $"Đã xảy ra lỗi khi xác nhận đơn hàng: {ex.Message}");
             }
         }
+        private async Task<string> GetEmailTemplateForRejectedReturn(HoaDon hoaDon, CuaHang cuaHang)
+        {
+            var hoaDonDTO = await GetByIdHoaDonAdminDTOAsync(hoaDon.id_hoa_don);
+            var productListHtml = new StringBuilder();
+
+            foreach (var item in hoaDonDTO.hoaDonChiTiets)
+            {
+                productListHtml.Append($@"
+            <tr>
+                <td>
+                    <div class='product-name'>{item.ten_san_pham}</div>
+                    <div class='product-details'>Màu: {item.ten_mau_sac} • Size: {item.ten_kich_co} • {item.ma_san_pham_chi_tiet}</div>
+                </td>
+                <td>{item.so_luong}</td>
+                <td>
+                    <div class='original-price'>{item.don_gia:N0}₫</div>
+                    <div class='price'>{item.gia_sau_giam_gia:N0}₫</div>
+                </td>
+                <td class='price'>{item.thanh_tien:N0}₫</td>
+            </tr>");
+            }
+
+            var emailTemplate = $@"
+        <!DOCTYPE html>
+        <html lang='vi'>
+        <head>
+            <meta charset='UTF-8'>
+            <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+            <title>Hóa Đơn - {cuaHang.ten_cua_hang}</title>
+            <style>
+                * {{
+                    margin: 0;
+                    padding: 0;
+                    box-sizing: border-box;
+                }}
+
+                body {{
+                    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+                    background-color: #f8fafc;
+                    color: #1e293b;
+                    line-height: 1.6;
+                }}
+
+                .container {{
+                    max-width: 800px;
+                    margin: 40px auto;
+                    padding: 0 30px;
+                    background: white;
+                    border-radius: 12px;
+                    border: 1px solid #e2e8f0;
+                    overflow: hidden;
+                }}
+
+                .header {{
+                    background: white;
+                    padding: 40px 40px 30px;
+                    border-bottom: 1px solid #e2e8f0;
+                }}
+
+                .header-content {{
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: flex-start;
+                }}
+
+                .company-info h1 {{
+                    font-size: 32px;
+                    font-weight: 700;
+                    color: #0f172a;
+                    margin-bottom: 8px;
+                    letter-spacing: -0.5px;
+                }}
+
+                .company-details {{
+                    color: #64748b;
+                    font-size: 14px;
+                }}
+
+                .invoice-meta {{
+                    text-align: right;
+                }}
+
+                .invoice-title {{
+                    font-size: 24px;
+                    font-weight: 600;
+                    color: #0f172a;
+                    margin-bottom: 8px;
+                }}
+
+                .invoice-number {{
+                    color: #64748b;
+                    font-size: 14px;
+                    margin-bottom: 4px;
+                }}
+
+                .status {{
+                    display: inline-block;
+                    padding: 6px 12px;
+                    background: #fee2e2;
+                    color: #991b1b;
+                    border-radius: 20px;
+                    font-size: 12px;
+                    font-weight: 500;
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
+                }}
+
+                .content {{
+                    padding: 40px;
+                }}
+
+                .section {{
+                    margin-bottom: 40px;
+                }}
+
+                .section:last-child {{
+                    margin-bottom: 0;
+                }}
+
+                .section-title {{
+                    font-size: 16px;
+                    font-weight: 600;
+                    color: #0f172a;
+                    margin-bottom: 20px;
+                    text-transform: uppercase;
+                    letter-spacing: 1px;
+                }}
+
+                .info-grid {{
+                    display: grid;
+                    grid-template-columns: 1fr 1fr;
+                    gap: 32px;
+                }}
+
+                .info-block h3 {{
+                    font-size: 14px;
+                    font-weight: 600;
+                    color: #374151;
+                    margin-bottom: 8px;
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
+                }}
+
+                .info-block p {{
+                    color: #6b7280;
+                    font-size: 14px;
+                    margin-bottom: 4px;
+                }}
+
+                .address {{
+                    background: #f8fafc;
+                    padding: 16px;
+                    border-radius: 8px;
+                    border-left: 3px solid #3b82f6;
+                }}
+
+                .table {{
+                    width: 100%;
+                    border-collapse: collapse;
+                    margin-top: 16px;
+                }}
+
+                .table thead th {{
+                    background: #f8fafc;
+                    color: #374151;
+                    font-weight: 600;
+                    font-size: 12px;
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
+                    padding: 16px 12px;
+                    text-align: left;
+                    border-bottom: 1px solid #e2e8f0;
+                }}
+
+                .table tbody td {{
+                    padding: 16px 12px;
+                    border-bottom: 1px solid #f1f5f9;
+                    font-size: 14px;
+                }}
+
+                .table tbody tr:hover {{
+                    background: #f8fafc;
+                }}
+
+                .product-name {{
+                    font-weight: 500;
+                    color: #0f172a;
+                }}
+
+                .product-details {{
+                    color: #64748b;
+                    font-size: 12px;
+                    margin-top: 2px;
+                }}
+
+                .price {{
+                    font-weight: 500;
+                    text-align: right;
+                }}
+
+                .original-price {{
+                    text-decoration: line-through;
+                    color: #9ca3af;
+                    font-size: 12px;
+                }}
+
+                .rejection-reason {{
+                    background: #fee2e2;
+                    border: 1px solid #fecaca;
+                    padding: 24px;
+                    border-radius: 8px;
+                    margin-top: 32px;
+                }}
+
+                .rejection-title {{
+                    font-weight: 600;
+                    color: #991b1b;
+                    margin-bottom: 12px;
+                    font-size: 16px;
+                }}
+
+                .rejection-text {{
+                    color: #7f1d1d;
+                    font-size: 14px;
+                    line-height: 1.6;
+                }}
+
+                .summary {{
+                    background: white;
+                    border: 1px solid #e2e8f0;
+                    border-radius: 8px;
+                    padding: 24px;
+                    margin-top: 32px;
+                }}
+
+                .summary-row {{
+                    display: flex;
+                    justify-content: space-between;
+                    margin-bottom: 12px;
+                    font-size: 14px;
+                }}
+
+                .summary-row:last-child {{
+                    margin-bottom: 0;
+                    padding-top: 16px;
+                    border-top: 1px solid #e2e8f0;
+                    font-weight: 600;
+                    font-size: 16px;
+                    color: #0f172a;
+                }}
+
+                .summary-label {{
+                    color: #64748b;
+                }}
+
+                .summary-value {{
+                    font-weight: 500;
+                    color: #0f172a;
+                }}
+
+                .discount {{
+                    color: #059669;
+                }}
+
+                .footer {{
+                    background: #f8fafc;
+                    padding: 24px 40px;
+                    border-top: 1px solid #e2e8f0;
+                    text-align: center;
+                }}
+
+                .footer-text {{
+                    color: #64748b;
+                    font-size: 14px;
+                }}
+
+                @media (max-width: 768px) {{
+                    .container {{
+                        margin: 20px;
+                        border-radius: 8px;
+                    }}
+                    
+                    .header, .content, .footer {{
+                        padding-left: 24px;
+                        padding-right: 24px;
+                    }}
+                    
+                    .header-content {{
+                        flex-direction: column;
+                        gap: 24px;
+                    }}
+                    
+                    .invoice-meta {{
+                        text-align: left;
+                    }}
+                    
+                    .info-grid {{
+                        grid-template-columns: 1fr;
+                        gap: 24px;
+                    }}
+                    
+                    .table {{
+                        font-size: 12px;
+                    }}
+                    
+                    .table thead th,
+                    .table tbody td {{
+                        padding: 12px 8px;
+                    }}
+                }}
+            </style>
+        </head>
+        <body>
+            <div class='container'>
+                <header class='header'>
+                    <div class='header-content'>
+                        <div class='company-info'>
+                            <h1>{cuaHang.ten_cua_hang}</h1>
+                            <div class='company-details'>
+                                <p>{cuaHang.email}</p>
+                                <p>{cuaHang.sdt}</p>
+                                <p>{cuaHang.dia_chi}</p>
+                            </div>
+                        </div>
+                        <div class='invoice-meta'>
+                            <div class='invoice-title'>Hóa đơn</div>
+                            <div class='invoice-number'>{hoaDonDTO.ma_hoa_don}</div>
+                            <div class='invoice-number'>{hoaDonDTO.ngay_tao:dd/MM/yyyy}</div>
+                            <div class='status'>Đã từ chối trả hàng</div>
+                        </div>
+                    </div>
+                </header>
+
+                <main class='content'>
+                    <section class='section'>
+                        <h2 class='section-title'>Thông tin</h2>
+                        <div class='info-grid'>
+                            <div class='info-block'>
+                                <h3>Khách hàng</h3>
+                                <p>Mã: {hoaDonDTO.khachHang?.ma_khach_hang}</p>
+                                <p>Loại: Đơn hàng Online</p>
+                                <p>Thanh toán: {hoaDonDTO.ten_phuong_thuc_thanh_toan}</p>
+                            </div>
+                            <div class='info-block'>
+                                <h3>Giao hàng</h3>
+                                <div class='address'>
+                                    <p>{hoaDonDTO.dia_chi_nhan_hang}</p>
+                                    <p>{hoaDonDTO.ghi_chu ?? "Không có"}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class='section'>
+                        <h2 class='section-title'>Sản phẩm</h2>
+                        <table class='table'>
+                            <thead>
+                                <tr>
+                                    <th>Sản phẩm</th>
+                                    <th>Số lượng</th>
+                                    <th>Đơn giá</th>
+                                    <th>Thành tiền</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {productListHtml}
+                            </tbody>
+                        </table>";
+
+            if (hoaDonDTO.so_tien_khuyen_mai > 0)
+            {
+                emailTemplate += $@"
+                        <div class='promo-card'>
+                            <div class='promo-title'>Khuyến mãi sự kiện</div>
+                            <div class='promo-code'>{hoaDonDTO.khuyenMai?.ma_khuyen_mai} • Giảm {hoaDonDTO.so_tien_khuyen_mai:N0}₫</div>
+                        </div>";
+            }
+
+            emailTemplate += $@"
+                    </section>
+
+                    <section class='section'>
+                        <div class='summary'>
+                            <div class='summary-row'>
+                                <span class='summary-label'>Tổng tiền hàng</span>
+                                <span class='summary-value'>{hoaDonDTO.tong_tien_don_hang:N0}₫</span>
+                            </div>
+                            <div class='summary-row'>
+                                <span class='summary-label'>Phí vận chuyển</span>
+                                <span class='summary-value'>{hoaDonDTO.phi_van_chuyen:N0}₫</span>
+                            </div>";
+
+            if (hoaDonDTO.so_tien_khuyen_mai > 0)
+            {
+                emailTemplate += $@"
+                            <div class='summary-row'>
+                                <span class='summary-label discount'>Khuyến mãi</span>
+                                <span class='summary-value discount'>-{hoaDonDTO.so_tien_khuyen_mai:N0}₫</span>
+                            </div>";
+            }
+
+            emailTemplate += $@"
+                            <div class='summary-row'>
+                                <span>Tổng thanh toán</span>
+                                <span>{hoaDonDTO.tong_tien_phai_thanh_toan:N0}₫</span>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class='section'>
+                        <div class='rejection-reason'>
+                            <div class='rejection-title'>Lý do từ chối trả hàng</div>
+                            <div class='rejection-text'>{hoaDon.ly_do_tra_hang}</div>
+                        </div>
+                    </section>
+                </main>
+
+                <footer class='footer'>
+                    <p class='footer-text'>Cảm ơn bạn đã mua hàng tại {cuaHang.ten_cua_hang}</p>
+                </footer>
+            </div>
+        </body>
+        </html>";
+
+            return emailTemplate;
+        }
+
+        private async Task<string> GetEmailTemplateForOtherStatus(HoaDon hoaDon, CuaHang cuaHang, string trangThaiText)
+        {
+            var hoaDonDTO = await GetByIdHoaDonAdminDTOAsync(hoaDon.id_hoa_don);
+            var productListHtml = new StringBuilder();
+
+            foreach (var item in hoaDonDTO.hoaDonChiTiets)
+            {
+                productListHtml.Append($@"
+            <tr>
+                <td>
+                    <div class='product-name'>{item.ten_san_pham}</div>
+                    <div class='product-details'>Màu: {item.ten_mau_sac} • Size: {item.ten_kich_co} • {item.ma_san_pham_chi_tiet}</div>
+                </td>
+                <td>{item.so_luong}</td>
+                <td>
+                    <div class='original-price'>{item.don_gia:N0}₫</div>
+                    <div class='price'>{item.gia_sau_giam_gia:N0}₫</div>
+                </td>
+                <td class='price'>{item.thanh_tien:N0}₫</td>
+            </tr>");
+            }
+
+            var emailTemplate = $@"
+        <!DOCTYPE html>
+        <html lang='vi'>
+        <head>
+            <meta charset='UTF-8'>
+            <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+            <title>Hóa Đơn - {cuaHang.ten_cua_hang}</title>
+            <style>
+                * {{
+                    margin: 0;
+                    padding: 0;
+                    box-sizing: border-box;
+                }}
+
+                body {{
+                    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+                    background-color: #f8fafc;
+                    color: #1e293b;
+                    line-height: 1.6;
+                }}
+
+                .container {{
+                    max-width: 800px;
+                    margin: 40px auto;
+                    padding: 0 30px;
+                    background: white;
+                    border-radius: 12px;
+                    border: 1px solid #e2e8f0;
+                    overflow: hidden;
+                }}
+
+                .header {{
+                    background: white;
+                    padding: 40px 40px 30px;
+                    border-bottom: 1px solid #e2e8f0;
+                }}
+
+                .header-content {{
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: flex-start;
+                }}
+
+                .company-info h1 {{
+                    font-size: 32px;
+                    font-weight: 700;
+                    color: #0f172a;
+                    margin-bottom: 8px;
+                    letter-spacing: -0.5px;
+                }}
+
+                .company-details {{
+                    color: #64748b;
+                    font-size: 14px;
+                }}
+
+                .invoice-meta {{
+                    text-align: right;
+                }}
+
+                .invoice-title {{
+                    font-size: 24px;
+                    font-weight: 600;
+                    color: #0f172a;
+                    margin-bottom: 8px;
+                }}
+
+                .invoice-number {{
+                    color: #64748b;
+                    font-size: 14px;
+                    margin-bottom: 4px;
+                }}
+
+                .status {{
+                    display: inline-block;
+                    padding: 6px 12px;
+                    background: #fef3c7;
+                    color: #92400e;
+                    border-radius: 20px;
+                    font-size: 12px;
+                    font-weight: 500;
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
+                }}
+
+                .content {{
+                    padding: 40px;
+                }}
+
+                .section {{
+                    margin-bottom: 40px;
+                }}
+
+                .section:last-child {{
+                    margin-bottom: 0;
+                }}
+
+                .section-title {{
+                    font-size: 16px;
+                    font-weight: 600;
+                    color: #0f172a;
+                    margin-bottom: 20px;
+                    text-transform: uppercase;
+                    letter-spacing: 1px;
+                }}
+
+                .info-grid {{
+                    display: grid;
+                    grid-template-columns: 1fr 1fr;
+                    gap: 32px;
+                }}
+
+                .info-block h3 {{
+                    font-size: 14px;
+                    font-weight: 600;
+                    color: #374151;
+                    margin-bottom: 8px;
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
+                }}
+
+                .info-block p {{
+                    color: #6b7280;
+                    font-size: 14px;
+                    margin-bottom: 4px;
+                }}
+
+                .address {{
+                    background: #f8fafc;
+                    padding: 16px;
+                    border-radius: 8px;
+                    border-left: 3px solid #3b82f6;
+                }}
+
+                .table {{
+                    width: 100%;
+                    border-collapse: collapse;
+                    margin-top: 16px;
+                }}
+
+                .table thead th {{
+                    background: #f8fafc;
+                    color: #374151;
+                    font-weight: 600;
+                    font-size: 12px;
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
+                    padding: 16px 12px;
+                    text-align: left;
+                    border-bottom: 1px solid #e2e8f0;
+                }}
+
+                .table tbody td {{
+                    padding: 16px 12px;
+                    border-bottom: 1px solid #f1f5f9;
+                    font-size: 14px;
+                }}
+
+                .table tbody tr:hover {{
+                    background: #f8fafc;
+                }}
+
+                .product-name {{
+                    font-weight: 500;
+                    color: #0f172a;
+                }}
+
+                .product-details {{
+                    color: #64748b;
+                    font-size: 12px;
+                    margin-top: 2px;
+                }}
+
+                .price {{
+                    font-weight: 500;
+                    text-align: right;
+                }}
+
+                .original-price {{
+                    text-decoration: line-through;
+                    color: #9ca3af;
+                    font-size: 12px;
+                }}
+
+                .promo-card {{
+                    background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+                    border: 1px solid #93c5fd;
+                    padding: 16px;
+                    border-radius: 8px;
+                    margin-top: 16px;
+                }}
+
+                .promo-title {{
+                    font-weight: 600;
+                    color: #1e40af;
+                    margin-bottom: 4px;
+                }}
+
+                .promo-code {{
+                    color: #3730a3;
+                    font-size: 12px;
+                    font-family: 'Fira Code', monospace;
+                }}
+
+                .summary {{
+                    background: white;
+                    border: 1px solid #e2e8f0;
+                    border-radius: 8px;
+                    padding: 24px;
+                    margin-top: 32px;
+                }}
+
+                .summary-row {{
+                    display: flex;
+                    justify-content: space-between;
+                    margin-bottom: 12px;
+                    font-size: 14px;
+                }}
+
+                .summary-row:last-child {{
+                    margin-bottom: 0;
+                    padding-top: 16px;
+                    border-top: 1px solid #e2e8f0;
+                    font-weight: 600;
+                    font-size: 16px;
+                    color: #0f172a;
+                }}
+
+                .summary-label {{
+                    color: #64748b;
+                }}
+
+                .summary-value {{
+                    font-weight: 500;
+                    color: #0f172a;
+                }}
+
+                .discount {{
+                    color: #059669;
+                }}
+
+                .footer {{
+                    background: #f8fafc;
+                    padding: 24px 40px;
+                    border-top: 1px solid #e2e8f0;
+                    text-align: center;
+                }}
+
+                .footer-text {{
+                    color: #64748b;
+                    font-size: 14px;
+                }}
+
+                @media (max-width: 768px) {{
+                    .container {{
+                        margin: 20px;
+                        border-radius: 8px;
+                    }}
+                    
+                    .header, .content, .footer {{
+                        padding-left: 24px;
+                        padding-right: 24px;
+                    }}
+                    
+                    .header-content {{
+                        flex-direction: column;
+                        gap: 24px;
+                    }}
+                    
+                    .invoice-meta {{
+                        text-align: left;
+                    }}
+                    
+                    .info-grid {{
+                        grid-template-columns: 1fr;
+                        gap: 24px;
+                    }}
+                    
+                    .table {{
+                        font-size: 12px;
+                    }}
+                    
+                    .table thead th,
+                    .table tbody td {{
+                        padding: 12px 8px;
+                    }}
+                }}
+            </style>
+        </head>
+        <body>
+            <div class='container'>
+                <header class='header'>
+                    <div class='header-content'>
+                        <div class='company-info'>
+                            <h1>{cuaHang.ten_cua_hang}</h1>
+                            <div class='company-details'>
+                                <p>{cuaHang.email}</p>
+                                <p>{cuaHang.sdt}</p>
+                                <p>{cuaHang.dia_chi}</p>
+                            </div>
+                        </div>
+                        <div class='invoice-meta'>
+                            <div class='invoice-title'>Hóa đơn</div>
+                            <div class='invoice-number'>{hoaDonDTO.ma_hoa_don}</div>
+                            <div class='invoice-number'>{hoaDonDTO.ngay_tao:dd/MM/yyyy}</div>
+                            <div class='status'>{trangThaiText}</div>
+                        </div>
+                    </div>
+                </header>
+
+                <main class='content'>
+                    <section class='section'>
+                        <h2 class='section-title'>Thông tin</h2>
+                        <div class='info-grid'>
+                            <div class='info-block'>
+                                <h3>Khách hàng</h3>
+                                <p>Mã: {hoaDonDTO.khachHang?.ma_khach_hang}</p>
+                                <p>Loại: Đơn hàng Online</p>
+                                <p>Thanh toán: {hoaDonDTO.ten_phuong_thuc_thanh_toan}</p>
+                            </div>
+                            <div class='info-block'>
+                                <h3>Giao hàng</h3>
+                                <div class='address'>
+                                    <p>{hoaDonDTO.dia_chi_nhan_hang}</p>
+                                    <p>{hoaDonDTO.ghi_chu ?? "Không có"}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class='section'>
+                        <h2 class='section-title'>Sản phẩm</h2>
+                        <table class='table'>
+                            <thead>
+                                <tr>
+                                    <th>Sản phẩm</th>
+                                    <th>Số lượng</th>
+                                    <th>Đơn giá</th>
+                                    <th>Thành tiền</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {productListHtml}
+                            </tbody>
+                        </table>";
+
+            if (hoaDonDTO.so_tien_khuyen_mai > 0)
+            {
+                emailTemplate += $@"
+                        <div class='promo-card'>
+                            <div class='promo-title'>Khuyến mãi sự kiện</div>
+                            <div class='promo-code'>{hoaDonDTO.khuyenMai?.ma_khuyen_mai} • Giảm {hoaDonDTO.so_tien_khuyen_mai:N0}₫</div>
+                        </div>";
+            }
+
+            emailTemplate += $@"
+                    </section>
+
+                    <section class='section'>
+                        <div class='summary'>
+                            <div class='summary-row'>
+                                <span class='summary-label'>Tổng tiền hàng</span>
+                                <span class='summary-value'>{hoaDonDTO.tong_tien_don_hang:N0}₫</span>
+                            </div>
+                            <div class='summary-row'>
+                                <span class='summary-label'>Phí vận chuyển</span>
+                                <span class='summary-value'>{hoaDonDTO.phi_van_chuyen:N0}₫</span>
+                            </div>";
+
+            if (hoaDonDTO.so_tien_khuyen_mai > 0)
+            {
+                emailTemplate += $@"
+                            <div class='summary-row'>
+                                <span class='summary-label discount'>Khuyến mãi</span>
+                                <span class='summary-value discount'>-{hoaDonDTO.so_tien_khuyen_mai:N0}₫</span>
+                            </div>";
+            }
+
+            emailTemplate += $@"
+                            <div class='summary-row'>
+                                <span>Tổng thanh toán</span>
+                                <span>{hoaDonDTO.tong_tien_phai_thanh_toan:N0}₫</span>
+                            </div>
+                        </div>
+                    </section>
+                </main>
+
+                <footer class='footer'>
+                    <p class='footer-text'>Cảm ơn bạn đã mua hàng tại {cuaHang.ten_cua_hang}</p>
+                </footer>
+            </div>
+        </body>
+        </html>";
+
+            return emailTemplate;
+        }
+
         public async Task<(bool success, string message)> GuiEmailCapNhatTrangThaiAsync(Guid idHoaDon, string trangThai)
         {
             try
             {
-                var inforCuaHang = await _cuaHangRepository.GetFirstOrDefaultAsync(x => x.id_cua_hang != Guid.Empty);
                 var hoaDon = await _hoaDonRepository.GetByIdWithIncludeAsync(idHoaDon,
                     q => q.Include(hd => hd.KhachHang)
-                          .Include(hd => hd.HoaDonChiTiets)
-                          .ThenInclude(hct => hct.SanPhamChiTiet)
+                         .Include(hd => hd.CuaHang));
+
+                if (hoaDon == null)
+                    return (false, "Không tìm thấy hóa đơn");
+
+                if (hoaDon.KhachHang == null || string.IsNullOrEmpty(hoaDon.KhachHang.email))
+                    return (false, "Không tìm thấy email khách hàng");
+
+                string emailTemplate;
+                if (trangThai == "DaTuChoiTraHang")
+                {
+                    emailTemplate = await GetEmailTemplateForRejectedReturn(hoaDon, hoaDon.CuaHang);
+                }
+                else
+                {
+                    var trangThaiText = GetTrangThaiText(trangThai);
+                    emailTemplate = await GetEmailTemplateForOtherStatus(hoaDon, hoaDon.CuaHang, trangThaiText);
+                }
+
+                var emailSubject = $"Cập nhật trạng thái đơn hàng {hoaDon.ma_hoa_don}";
+                var emailBody = emailTemplate;
+
+                await _emailService.SendEmailAsync(hoaDon.KhachHang.email, emailSubject, emailBody);
+
+                return (true, "Gửi email thành công");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi gửi email cập nhật trạng thái đơn hàng");
+                return (false, "Lỗi khi gửi email: " + ex.Message);
+            }
+        }
+
+        private string GetTrangThaiText(string trangThai)
+        {
+            return TrangThaiDonHangHelper.GetTrangThaiText(trangThai);
+        }
+
+        private string GetTrangThaiMessage(string trangThai, CuaHang cuaHang)
+        {
+            return TrangThaiDonHangHelper.GetTrangThaiMessage(trangThai, cuaHang);
+        }
+        public async Task<(bool success, string message)> CapNhatTrangThaiDonHangAsync(Guid idHoaDon, string trangThai, Guid id_nhan_vien_xu_ly)
+        {
+            try
+            {
+                // Validate nhân viên xử lý
+                if (!await ValidateNhanVienXuLy(id_nhan_vien_xu_ly))
+                {
+                    return (false, "Nhân viên xử lý không hợp lệ hoặc không tồn tại");
+                }
+
+                // Validate trạng thái
+                if (!Enum.TryParse<TrangThaiDonHang>(trangThai, out _))
+                {
+                    return (false, "Trạng thái không hợp lệ");
+                }
+
+                if (!new[] { "DangChuanBi", "DangGiaoHang", "DaNhanHang", "DaHoanThanh" }.Contains(trangThai))
+                {
+                    return (false, "Trạng thái không hợp lệ. Trạng thái đơn hàng phải là DangChuanBi, DangGiaoHang, DaNhanHang hoặc DaHoanThanh");
+                }
+
+                // Lấy thông tin đơn hàng
+                var hoaDon = await _hoaDonRepository.GetByIdWithIncludeAsync(idHoaDon,
+                    q => q.Include(hd => hd.HoaDonChiTiets)
+                          .Include(hd => hd.KhachHang)
                           .Include(hd => hd.PhuongThucThanhToan));
 
-                if (hoaDon == null || hoaDon.KhachHang == null || string.IsNullOrEmpty(hoaDon.KhachHang.email))
-                    return (false, "Không thể gửi email: Không tìm thấy thông tin đơn hàng hoặc email khách hàng");
+                if (hoaDon == null)
+                {
+                    return (false, "Không tìm thấy đơn hàng");
+                }
 
-                var trangThaiText = GetTrangThaiText(trangThai);
-                var emailSubject = $"Cập nhật trạng thái đơn hàng {hoaDon.ma_hoa_don}";
+                // Kiểm tra tính hợp lệ của luồng trạng thái
+                if (!IsValidStatusTransition(hoaDon.trang_thai_hoa_don, trangThai))
+                {
+                    return (false, $"Không thể chuyển từ trạng thái {hoaDon.trang_thai_hoa_don} sang trạng thái {trangThai}");
+                }
 
-                // Tạo nội dung chi tiết sản phẩm
-                var chiTietSanPham = string.Join("<br/>", hoaDon.HoaDonChiTiets.Select(ct =>
-                    $"- {ct.ten_san_pham} ({ct.ten_mau_sac}, {ct.ten_kich_co}): {ct.so_luong} x {ct.gia_sau_giam_gia:N0} VNĐ = {ct.thanh_tien:N0} VNĐ"
-                ));
+                // Kiểm tra điều kiện nghiệp vụ cụ thể cho từng trạng thái
+                if (trangThai == "DaHoanThanh")
+                {
+                    if (hoaDon.PhuongThucThanhToan?.ma_phuong_thuc_thanh_toan == "TienMat" &&
+                        (!hoaDon.so_tien_khach_tra.HasValue || hoaDon.so_tien_khach_tra < hoaDon.tong_tien_phai_thanh_toan))
+                    {
+                        return (false, "Chưa nhập đủ số tiền khách trả cho đơn hàng thanh toán tiền mặt");
+                    }
+                }
 
-                var emailTemplate = $@"
+                // Thực hiện cập nhật trong transaction với retry logic
+                var success = await RetryOperation(async () =>
+                {
+                    return await _hoaDonRepository.ExecuteInTransactionAsync(async () =>
+                    {
+                        // Cập nhật trạng thái đơn hàng
+                        hoaDon.trang_thai_hoa_don = trangThai;
+                        hoaDon.ngay_sua = DateTime.Now;
+                        hoaDon.id_nhan_vien_xu_ly = id_nhan_vien_xu_ly;
+
+                        // Cập nhật trạng thái các chi tiết đơn hàng
+                        foreach (var chiTiet in hoaDon.HoaDonChiTiets)
+                        {
+                            chiTiet.trang_thai = trangThai;
+                            chiTiet.ngay_sua = DateTime.Now;
+                            chiTiet.id_nhan_vien_xu_ly = id_nhan_vien_xu_ly;
+
+                            var updateChiTietResult = await _hoaDonChiTietRepository.UpdateAsync(chiTiet);
+                            if (!updateChiTietResult) return false;
+                        }
+
+                        // Cập nhật đơn hàng
+                        var updateResult = await _hoaDonRepository.UpdateAsync(hoaDon);
+                        if (!updateResult) return false;
+
+                        // Gửi email thông báo cho khách hàng
+                        if (hoaDon.KhachHang?.email != null)
+                        {
+                            try
+                            {
+                                await GuiEmailCapNhatTrangThaiAsync(idHoaDon, trangThai);
+                            }
+                            catch (Exception ex)
+                            {
+                                // Log lỗi nhưng không dừng quy trình
+                                Console.WriteLine($"Lỗi gửi email: {ex.Message}");
+                            }
+                        }
+
+                        return true;
+                    });
+                });
+
+                if (success)
+                {
+                    var thongBao = trangThai switch
+                    {
+                        "DangChuanBi" => "Đơn hàng đang được chuẩn bị",
+                        "DangGiaoHang" => "Đơn hàng đang được giao",
+                        "DaHoanThanh" => "Đơn hàng đã giao thành công",
+                        _ => $"Đã cập nhật trạng thái đơn hàng thành {trangThai}"
+                    };
+                    return (true, thongBao);
+                }
+
+                return (false, "Không thể cập nhật trạng thái đơn hàng. Vui lòng thử lại sau");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Lỗi cập nhật trạng thái đơn hàng: {ex.Message}");
+                return (false, $"Đã xảy ra lỗi khi cập nhật trạng thái đơn hàng: {ex.Message}");
+            }
+        }
+        public async Task<(bool success, string message)> DanhDauHetHangAsync(Guid idHoaDon, Guid id_nhan_vien_xu_ly)
+        {
+            try
+            {
+                // Kiểm tra nhân viên xử lý
+                if (!await ValidateNhanVienXuLy(id_nhan_vien_xu_ly))
+                    return (false, "Nhân viên không tồn tại hoặc không có quyền xử lý");
+                var cuaHang = await _cuaHangRepository.GetFirstOrDefaultAsync(c => c.id_cua_hang != Guid.Empty);
+                var hoaDon = await _hoaDonRepository.GetByIdWithIncludeAsync(idHoaDon,
+                    q => q.Include(hd => hd.HoaDonChiTiets)
+                         .ThenInclude(hct => hct.SanPhamChiTiet)
+                         .ThenInclude(spct => spct.SanPham)
+                         .Include(hd => hd.HoaDonChiTiets)
+                         .ThenInclude(hct => hct.SanPhamChiTiet)
+                         .ThenInclude(spct => spct.MauSac)
+                         .Include(hd => hd.HoaDonChiTiets)
+                         .ThenInclude(hct => hct.SanPhamChiTiet)
+                         .ThenInclude(spct => spct.KichCo)
+                         .Include(hd => hd.KhachHang)
+                         .ThenInclude(kh => kh.TaiKhoan)
+                         .Include(hd => hd.CuaHang));
+
+                if (hoaDon == null)
+                    return (false, "Không tìm thấy hóa đơn");
+
+                if (hoaDon.trang_thai_hoa_don != "DangChoXuLy")
+                    return (false, "Hóa đơn không ở trạng thái đang chờ xử lý");
+
+                // Kiểm tra xem đã có sản phẩm nào hết hàng chưa
+                var sanPhamHetHang = hoaDon.HoaDonChiTiets
+                    .Where(hct => hct.SanPhamChiTiet.so_luong < hct.so_luong)
+                    .Select(hct => $"{hct.SanPhamChiTiet.SanPham.ten_san_pham} - {hct.SanPhamChiTiet.MauSac.ten_mau_sac} - {hct.SanPhamChiTiet.KichCo.ten_kich_co} (Mã: {hct.SanPhamChiTiet.ma_san_pham_chi_tiet})")
+                    .ToList();
+
+                if (!sanPhamHetHang.Any())
+                    return (false, "Không có sản phẩm nào hết hàng trong đơn");
+
+                // Cập nhật trạng thái hóa đơn và chi tiết
+                hoaDon.trang_thai_hoa_don = "HetHang";
+                hoaDon.ngay_sua = DateTime.Now;
+                hoaDon.id_nhan_vien_xu_ly = id_nhan_vien_xu_ly;
+
+                foreach (var hct in hoaDon.HoaDonChiTiets)
+                {
+                    hct.trang_thai = "HetHang";
+                }
+
+                // Cập nhật hóa đơn
+                var updateResult = await _hoaDonRepository.UpdateAsync(hoaDon);
+                if (!updateResult)
+                    return (false, "Không thể cập nhật trạng thái hóa đơn");
+
+                // Gửi email thông báo cho khách hàng nếu có email
+                if (hoaDon.KhachHang?.email != null)
+                {
+                    try
+                    {
+                        var emailSubject = $"Cập nhật trạng thái đơn hàng {hoaDon.ma_hoa_don}";
+                        var emailBody = $@"
 <!DOCTYPE html>
 <html>
 <head>
@@ -1536,379 +2611,9 @@ namespace API.Services.Implementations
             </div>
 
             <div class='status-message'>
-                <p>Đơn hàng của bạn đã được cập nhật trạng thái thành: <strong>{trangThaiText}</strong></p>
-                <p>{GetTrangThaiMessage(trangThai, inforCuaHang)}</p>
+                <p>Đơn hàng của bạn đã được cập nhật trạng thái thành: <strong>{TrangThaiDonHangHelper.GetTrangThaiText(hoaDon.trang_thai_hoa_don)}</strong></p>
+                <p>{TrangThaiDonHangHelper.GetTrangThaiMessage(hoaDon.trang_thai_hoa_don, cuaHang)}</p>
             </div>
-
-            <div class='order-info'>
-                <h3>Thông tin đơn hàng</h3>
-                <div class='info-item'>
-                    <span class='info-label'>Mã đơn hàng:</span>
-                    <span class='info-value'>{hoaDon.ma_hoa_don}</span>
-                </div>
-                <div class='info-item'>
-                    <span class='info-label'>Ngày đặt:</span>
-                    <span class='info-value'>{hoaDon.ngay_tao:dd/MM/yyyy HH:mm}</span>
-                </div>
-                <div class='info-item'>
-                    <span class='info-label'>Phương thức thanh toán:</span>
-                    <span class='info-value'>{hoaDon.PhuongThucThanhToan?.ten_phuong_thuc_thanh_toan}</span>
-                </div>
-                <div class='info-item'>
-                    <span class='info-label'>Địa chỉ nhận hàng:</span>
-                    <span class='info-value'>{hoaDon.dia_chi_nhan_hang}</span>
-                </div>
-            </div>
-
-            <h3 style='color: #2c3e50; margin: 25px 0 15px 0;'>Chi tiết sản phẩm</h3>
-            <div class='product-list'>
-                {string.Join("", hoaDon.HoaDonChiTiets.Select(ct => $@"
-                    <div class='product-item' style='display: flex; justify-content: space-between; align-items: center; gap: 20px;'>
-                        <div class='product-details'>
-                            <div class='product-name'>{ct.ten_san_pham}</div>
-                            <div class='product-variant'>{ct.ten_mau_sac}, {ct.ten_kich_co}</div>
-                        </div>
-                        <div class='product-price' style='text-align: right; min-width: 200px;'>
-                            <div>{ct.so_luong} x {ct.gia_sau_giam_gia:N0} VNĐ</div>
-                            <div class='highlight'>{ct.thanh_tien:N0} VNĐ</div>
-                        </div>
-                    </div>
-                "))}
-            </div>
-
-            <div class='price-detail'>
-                <div class='price-row'>
-                    <span>Tổng tiền hàng:</span>
-                    <span>{hoaDon.tong_tien_don_hang:N0} VNĐ</span>
-                </div>
-                <div class='price-row'>
-                    <span>Phí vận chuyển:</span>
-                    <span>{hoaDon.phi_van_chuyen:N0} VNĐ</span>
-                </div>
-                {(hoaDon.so_tien_khuyen_mai > 0 ? $@"
-                <div class='price-row'>
-                    <span>Giảm giá:</span>
-                    <span>-{hoaDon.so_tien_khuyen_mai:N0} VNĐ</span>
-                </div>
-                " : "")}
-                <div class='price-row total-row'>
-                    <span>Tổng thanh toán:</span>
-                    <span>{hoaDon.tong_tien_phai_thanh_toan:N0} VNĐ</span>
-                </div>
-            </div>
-        </div>
-
-        <div class='footer'>
-            <p style='margin: 0;'>Nếu bạn có bất kỳ thắc mắc nào, vui lòng liên hệ với chúng tôi qua:</p>
-            <div class='contact-info'>
-                <div class='contact-item'>
-                    <strong>Email:</strong> {inforCuaHang.email}
-                </div>
-                <div class='contact-item'>
-                    <strong>Hotline:</strong> {inforCuaHang.sdt}
-                </div>
-            </div>
-            <p style='margin: 15px 0 0 0;'>Trân trọng,<br/><strong>Ban quản trị {inforCuaHang.ten_cua_hang}</strong></p>
-        </div>
-    </div>
-</body>
-</html>";
-
-                var result = await _emailService.SendEmailAsync(
-                    hoaDon.KhachHang.email,
-                    emailSubject,
-                    emailTemplate
-                );
-
-                return result
-                    ? (true, "Gửi email thông báo thành công")
-                    : (false, "Không thể gửi email thông báo");
-            }
-            catch (Exception ex)
-            {
-                return (false, $"Lỗi khi gửi email: {ex.Message}");
-            }
-        }
-
-        private string GetTrangThaiText(string trangThai)
-        {
-            return TrangThaiDonHangHelper.GetTrangThaiText(trangThai);
-        }
-
-        private string GetTrangThaiMessage(string trangThai, CuaHang cuaHang)
-        {
-            return TrangThaiDonHangHelper.GetTrangThaiMessage(trangThai, cuaHang);
-        }
-        public async Task<(bool success, string message)> CapNhatTrangThaiDonHangAsync(Guid idHoaDon, string trangThai, Guid id_nhan_vien_xu_ly)
-        {
-            try
-            {
-                // Validate nhân viên xử lý
-                if (!await ValidateNhanVienXuLy(id_nhan_vien_xu_ly))
-                {
-                    return (false, "Nhân viên xử lý không hợp lệ hoặc không tồn tại");
-                }
-
-                // Validate trạng thái
-                if (!Enum.TryParse<TrangThaiDonHang>(trangThai, out _))
-                {
-                    return (false, "Trạng thái không hợp lệ");
-                }
-
-                if (!new[] { "DangChuanBi", "DangGiaoHang", "DaNhanHang", "DaHoanThanh" }.Contains(trangThai))
-                {
-                    return (false, "Trạng thái không hợp lệ. Trạng thái đơn hàng phải là DangChuanBi, DangGiaoHang, DaNhanHang hoặc DaHoanThanh");
-                }
-
-                // Lấy thông tin đơn hàng
-                var hoaDon = await _hoaDonRepository.GetByIdWithIncludeAsync(idHoaDon,
-                    q => q.Include(hd => hd.HoaDonChiTiets)
-                          .Include(hd => hd.KhachHang)
-                          .Include(hd => hd.PhuongThucThanhToan));
-
-                if (hoaDon == null)
-                {
-                    return (false, "Không tìm thấy đơn hàng");
-                }
-
-                // Kiểm tra tính hợp lệ của luồng trạng thái
-                if (!IsValidStatusTransition(hoaDon.trang_thai_hoa_don, trangThai))
-                {
-                    return (false, $"Không thể chuyển từ trạng thái {hoaDon.trang_thai_hoa_don} sang trạng thái {trangThai}");
-                }
-
-                // Kiểm tra điều kiện nghiệp vụ cụ thể cho từng trạng thái
-                if (trangThai == "DaHoanThanh")
-                {
-                    if (hoaDon.PhuongThucThanhToan?.ma_phuong_thuc_thanh_toan == "TienMat" &&
-                        (!hoaDon.so_tien_khach_tra.HasValue || hoaDon.so_tien_khach_tra < hoaDon.tong_tien_phai_thanh_toan))
-                    {
-                        return (false, "Chưa nhập đủ số tiền khách trả cho đơn hàng thanh toán tiền mặt");
-                    }
-                }
-
-                // Thực hiện cập nhật trong transaction với retry logic
-                var success = await RetryOperation(async () =>
-                {
-                    return await _hoaDonRepository.ExecuteInTransactionAsync(async () =>
-                    {
-                        // Cập nhật trạng thái đơn hàng
-                        hoaDon.trang_thai_hoa_don = trangThai;
-                        hoaDon.ngay_sua = DateTime.Now;
-                        hoaDon.id_nhan_vien_xu_ly = id_nhan_vien_xu_ly;
-
-                        // Cập nhật trạng thái các chi tiết đơn hàng
-                        foreach (var chiTiet in hoaDon.HoaDonChiTiets)
-                        {
-                            chiTiet.trang_thai = trangThai;
-                            chiTiet.ngay_sua = DateTime.Now;
-                            chiTiet.id_nhan_vien_xu_ly = id_nhan_vien_xu_ly;
-
-                            var updateChiTietResult = await _hoaDonChiTietRepository.UpdateAsync(chiTiet);
-                            if (!updateChiTietResult) return false;
-                        }
-
-                        // Cập nhật đơn hàng
-                        var updateResult = await _hoaDonRepository.UpdateAsync(hoaDon);
-                        if (!updateResult) return false;
-
-                        // Gửi email thông báo cho khách hàng
-                        if (hoaDon.KhachHang?.email != null)
-                        {
-                            try
-                            {
-                                await GuiEmailCapNhatTrangThaiAsync(idHoaDon, trangThai);
-                            }
-                            catch (Exception ex)
-                            {
-                                // Log lỗi nhưng không dừng quy trình
-                                Console.WriteLine($"Lỗi gửi email: {ex.Message}");
-                            }
-                        }
-
-                        return true;
-                    });
-                });
-
-                if (success)
-                {
-                    var thongBao = trangThai switch
-                    {
-                        "DangChuanBi" => "Đơn hàng đang được chuẩn bị",
-                        "DangGiaoHang" => "Đơn hàng đang được giao",
-                        "DaHoanThanh" => "Đơn hàng đã giao thành công",
-                        _ => $"Đã cập nhật trạng thái đơn hàng thành {trangThai}"
-                    };
-                    return (true, thongBao);
-                }
-
-                return (false, "Không thể cập nhật trạng thái đơn hàng. Vui lòng thử lại sau");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Lỗi cập nhật trạng thái đơn hàng: {ex.Message}");
-                return (false, $"Đã xảy ra lỗi khi cập nhật trạng thái đơn hàng: {ex.Message}");
-            }
-        }
-        public async Task<(bool success, string message)> DanhDauHetHangAsync(Guid idHoaDon, Guid id_nhan_vien_xu_ly)
-        {
-            try
-            {
-                // Kiểm tra nhân viên xử lý
-                if (!await ValidateNhanVienXuLy(id_nhan_vien_xu_ly))
-                    return (false, "Nhân viên không tồn tại hoặc không có quyền xử lý");
-                var cuaHang = await _cuaHangRepository.GetFirstOrDefaultAsync(c => c.id_cua_hang != Guid.Empty);
-                var hoaDon = await _hoaDonRepository.GetByIdWithIncludeAsync(idHoaDon,
-                    q => q.Include(hd => hd.HoaDonChiTiets)
-                         .ThenInclude(hct => hct.SanPhamChiTiet)
-                         .ThenInclude(spct => spct.SanPham)
-                         .Include(hd => hd.HoaDonChiTiets)
-                         .ThenInclude(hct => hct.SanPhamChiTiet)
-                         .ThenInclude(spct => spct.MauSac)
-                         .Include(hd => hd.HoaDonChiTiets)
-                         .ThenInclude(hct => hct.SanPhamChiTiet)
-                         .ThenInclude(spct => spct.KichCo)
-                         .Include(hd => hd.KhachHang)
-                         .ThenInclude(kh => kh.TaiKhoan)
-                         .Include(hd => hd.CuaHang));
-
-                if (hoaDon == null)
-                    return (false, "Không tìm thấy hóa đơn");
-
-                if (hoaDon.trang_thai_hoa_don != "DangChoXuLy")
-                    return (false, "Hóa đơn không ở trạng thái đang chờ xử lý");
-
-                // Kiểm tra xem đã có sản phẩm nào hết hàng chưa
-                var sanPhamHetHang = hoaDon.HoaDonChiTiets
-                    .Where(hct => hct.SanPhamChiTiet.so_luong < hct.so_luong)
-                    .Select(hct => $"{hct.SanPhamChiTiet.SanPham.ten_san_pham} - {hct.SanPhamChiTiet.MauSac.ten_mau_sac} - {hct.SanPhamChiTiet.KichCo.ten_kich_co}")
-                    .ToList();
-
-                if (!sanPhamHetHang.Any())
-                    return (false, "Không có sản phẩm nào hết hàng trong đơn");
-
-                // Cập nhật trạng thái hóa đơn và chi tiết
-                hoaDon.trang_thai_hoa_don = "HetHang";
-                hoaDon.ngay_sua = DateTime.Now;
-                hoaDon.id_nhan_vien_xu_ly = id_nhan_vien_xu_ly;
-
-                foreach (var hct in hoaDon.HoaDonChiTiets)
-                {
-                    hct.trang_thai = "HetHang";
-                }
-
-                // Cập nhật hóa đơn
-                var updateResult = await _hoaDonRepository.UpdateAsync(hoaDon);
-                if (!updateResult)
-                    return (false, "Không thể cập nhật trạng thái hóa đơn");
-
-                // Gửi email thông báo cho khách hàng nếu có email
-                if (hoaDon.KhachHang?.email != null)
-                {
-                    try
-                    {
-                        var emailSubject = $"Cập nhật trạng thái đơn hàng {hoaDon.ma_hoa_don}";
-                        var emailBody = $@"
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset='UTF-8'>
-    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
-    <style>
-        body {{
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            line-height: 1.6;
-            color: #333;
-            margin: 0;
-            padding: 0;
-            background-color: #f4f4f4;
-        }}
-        .container {{
-            max-width: 600px;
-            margin: 20px auto;
-            background: #ffffff;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            overflow: hidden;
-        }}
-        .header {{
-            background: linear-gradient(135deg, #2c3e50, #3498db);
-            color: white;
-            padding: 20px;
-            text-align: center;
-        }}
-        .header h1 {{
-            margin: 0;
-            font-size: 24px;
-            font-weight: 600;
-        }}
-        .content {{
-            padding: 30px;
-        }}
-        .greeting {{
-            font-size: 18px;
-            color: #2c3e50;
-            margin-bottom: 20px;
-        }}
-        .message-box {{
-            background-color: #f8f9fa;
-            border-left: 4px solid #e74c3c;
-            padding: 15px;
-            margin: 20px 0;
-            border-radius: 0 4px 4px 0;
-        }}
-        .product-list {{
-            background-color: #fff;
-            border: 1px solid #e9ecef;
-            border-radius: 4px;
-            padding: 15px;
-            margin: 15px 0;
-        }}
-        .product-item {{
-            padding: 8px 0;
-            border-bottom: 1px solid #eee;
-        }}
-        .product-item:last-child {{
-            border-bottom: none;
-        }}
-        .highlight {{
-            color: #e67e22;
-            font-weight: 600;
-        }}
-        .footer {{
-            background-color: #f8f9fa;
-            padding: 20px;
-            text-align: center;
-            border-top: 1px solid #eee;
-            color: #6c757d;
-        }}
-        .contact-info {{
-            margin-top: 15px;
-            font-size: 14px;
-        }}
-        .button {{
-            display: inline-block;
-            padding: 10px 20px;
-            background-color: #3498db;
-            color: white;
-            text-decoration: none;
-            border-radius: 4px;
-            margin-top: 15px;
-        }}
-    </style>
-</head>
-<body>
-    <div class='container'>
-        <div class='header'>
-            <h1>Thông báo về đơn hàng của bạn</h1>
-        </div>
-        
-        <div class='content'>
-            <div class='greeting'>
-                Xin chào <strong>{hoaDon.KhachHang.ten_khach_hang}</strong>,
-            </div>
-
-            <p>Chúng tôi rất tiếc phải thông báo rằng một số sản phẩm trong đơn hàng của bạn hiện đang tạm thời hết hàng hoặc chưa đủ số lượng.</p>
 
             <div class='order-info'>
                 <h3>Thông tin đơn hàng</h3>
@@ -1975,6 +2680,7 @@ namespace API.Services.Implementations
             <div class='contact-info'>
                 <p style='margin: 5px 0;'>Hotline: {cuaHang.sdt}</p>
                 <p style='margin: 5px 0;'>Email: {cuaHang.email}</p>
+                <p style='margin: 5px 0;'>Địa chỉ: {cuaHang.dia_chi}</p>
             </div>
         </div>
     </div>
@@ -2172,6 +2878,9 @@ namespace API.Services.Implementations
                 id_hoa_don = Guid.NewGuid(),
                 ma_hoa_don = await TaoMaHoaDon(),
                 id_khach_hang = id_khach_hang,
+                ten_khach_hang = diaChi.ten_nguoi_nhan,
+                sdt_khach_hang = diaChi.so_dien_thoai,
+                dia_chi_nhan_hang = diaChi.tinh + ", " + diaChi.huyen + ", " + diaChi.xa + ", " + diaChi.dia_chi_cu_the,
                 trang_thai_hoa_don = "ChuaThanhToan",
                 loai_hoa_don = "Online",
                 ngay_tao = DateTime.Now,
@@ -2219,9 +2928,6 @@ namespace API.Services.Implementations
             }
             hoadonNew.tong_tien_don_hang = tongTienDonHang;
             hoadonNew.tong_tien_phai_thanh_toan = tongTienDonHang + phi_van_chuyen;
-            hoadonNew.ten_khach_hang = khachHang.ten_khach_hang;
-            hoadonNew.sdt_khach_hang = khachHang.so_dien_thoai;
-            hoadonNew.dia_chi_nhan_hang = diaChi.tinh + ", " + diaChi.huyen + ", " + diaChi.xa + ", " + diaChi.dia_chi_cu_the;
             hoadonNew.id_cua_hang = cuaHang.id_cua_hang == null ? Guid.Empty : cuaHang.id_cua_hang;
             await _hoaDonRepository.UpdateAsync(hoadonNew);
             return (true, "Tạo hóa đơn online thành công", hoadonNew.id_hoa_don);
@@ -2297,6 +3003,219 @@ namespace API.Services.Implementations
 
             return result;
         }
+
+        public async Task<(bool success, string message)> YeuCauTraHangAsync(Guid idHoaDon, Guid idKhachHang, string lyDoTraHang, IFormFile hinhAnhTraHang)
+        {
+            var hoaDon = await _hoaDonRepository.GetByIdAsync(idHoaDon);
+            if (hoaDon == null)
+                if (hoaDon == null)
+                    return (false, "Không tìm thấy hóa đơn");
+
+            // Kiểm tra thời gian trả hàng không quá 7 ngày
+            var thoiGianMua = hoaDon.ngay_tao;
+            var thoiGianHienTai = DateTime.Now;
+            var soNgayDaQua = (thoiGianHienTai - thoiGianMua).TotalDays;
+
+            if (soNgayDaQua > 7)
+                return (false, "Không thể yêu cầu trả hàng sau 7 ngày kể từ ngày mua");
+
+            if (hoaDon.id_khach_hang != idKhachHang)
+                return (false, "Bạn không có quyền thực hiện thao tác này");
+
+            if (hoaDon.trang_thai_hoa_don != "DaNhanHang" && hoaDon.trang_thai_hoa_don != "DaHoanThanh")
+                return (false, "Chỉ có thể yêu cầu trả hàng khi đã nhận hàng hoặc đã hoàn thành đơn");
+
+            // Upload hình ảnh
+            var imagePath = await UploadImage(hinhAnhTraHang);
+
+            hoaDon.trang_thai_hoa_don = "DangYeuCauTraHang";
+            hoaDon.ly_do_tra_hang = lyDoTraHang;
+            hoaDon.hinh_anh_tra_hang = imagePath;
+
+            var result = await _hoaDonRepository.UpdateAsync(hoaDon);
+            if (!result)
+                return (false, "Có lỗi xảy ra khi cập nhật hóa đơn");
+
+            // Gửi email thông báo cho admin
+            await GuiEmailCapNhatTrangThaiAsync(idHoaDon, "DangYeuCauTraHang");
+
+            return (true, "Yêu cầu trả hàng đã được gửi thành công");
+        }
+
+        public async Task<(bool success, string message)> XacNhanTraHangAsync(Guid idHoaDon, Guid idNhanVien)
+        {
+            var hoaDon = await _hoaDonRepository.GetByIdAsync(idHoaDon);
+            if (hoaDon == null)
+                return (false, "Không tìm thấy hóa đơn");
+
+            if (hoaDon.trang_thai_hoa_don != "DangYeuCauTraHang")
+                return (false, "Trạng thái hóa đơn không hợp lệ");
+
+
+            hoaDon.trang_thai_hoa_don = "DaXacNhanTraHang";
+            hoaDon.id_nhan_vien_xu_ly = idNhanVien;
+
+            var result = await _hoaDonRepository.UpdateAsync(hoaDon);
+            if (!result)
+                return (false, "Có lỗi xảy ra khi cập nhật hóa đơn");
+
+            // Gửi email thông báo cho khách hàng
+            await GuiEmailCapNhatTrangThaiAsync(idHoaDon, "DaXacNhanTraHang");
+
+            return (true, "Đã xác nhận yêu cầu trả hàng");
+        }
+
+        public async Task<(bool success, string message)> HoanThanhTraHangAsync(Guid idHoaDon, Guid idNhanVien)
+        {
+            try
+            {
+                var hoaDon = await _hoaDonRepository.GetByIdWithIncludeAsync(idHoaDon,
+                    q => q.Include(hd => hd.HoaDonChiTiets)
+                         .ThenInclude(hct => hct.SanPhamChiTiet)
+                         .Include(hd => hd.KhuyenMai)
+                         .Include(hd => hd.PhuongThucThanhToan));
+
+                if (hoaDon == null)
+                    return (false, "Không tìm thấy hóa đơn");
+
+                if (hoaDon.trang_thai_hoa_don != "DaXacNhanTraHang")
+                    return (false, "Hóa đơn không ở trạng thái cho phép hoàn thành trả hàng");
+
+                var kq = await _transactionHelper.ExecuteInTransactionAsync(async () =>
+                {
+                    // Cập nhật số lượng sản phẩm
+                    foreach (var chiTiet in hoaDon.HoaDonChiTiets)
+                    {
+                        var sanPhamChiTiet = await _sanPhamChiTietRepository.GetByIdAsync(chiTiet.id_san_pham_chi_tiet);
+                        if (sanPhamChiTiet != null)
+                        {
+                            sanPhamChiTiet.so_luong += chiTiet.so_luong;
+                            await _sanPhamChiTietRepository.UpdateAsync(sanPhamChiTiet);
+                        }
+                    }
+
+                    // Hoàn trả số lượng khuyến mãi nếu có
+                    if (hoaDon.id_khuyen_mai != null && hoaDon.KhuyenMai != null)
+                    {
+                        var khuyenMai = hoaDon.KhuyenMai;
+                        khuyenMai.so_luong_da_su_dung = Math.Max(0, khuyenMai.so_luong_da_su_dung - 1);
+                        await _khuyenMaiRepository.UpdateAsync(khuyenMai);
+                    }
+
+                    // Hoàn trả số lượng giảm giá nếu có
+                    foreach (var chiTiet in hoaDon.HoaDonChiTiets)
+                    {
+                        if (chiTiet.id_giam_gia_cua_sp != null)
+                        {
+                            var giamGia = await _giamGiaServices.GetByIdAsync(chiTiet.id_giam_gia_cua_sp.Value);
+                            if (giamGia != null)
+                            {
+                                giamGia.so_luong_da_su_dung -= chiTiet.so_luong;
+                                await _giamGiaServices.UpdateAsync(giamGia);
+                            }
+                        }
+                        chiTiet.trang_thai = "DaTraHang";
+                        chiTiet.id_nhan_vien_xu_ly = idNhanVien;
+                        chiTiet.ngay_sua = DateTime.Now;
+                        await _hoaDonChiTietRepository.UpdateAsync(chiTiet);
+                    }
+
+                    hoaDon.trang_thai_hoa_don = "DaTraHang";
+                    hoaDon.id_nhan_vien_xu_ly = idNhanVien;
+
+                    var result = await _hoaDonRepository.UpdateAsync(hoaDon);
+                    if (!result)
+                        return false;
+
+                    // Gửi email thông báo cho khách hàng
+                    await GuiEmailCapNhatTrangThaiAsync(idHoaDon, "DaTraHang");
+                    if (hoaDon.PhuongThucThanhToan.ma_phuong_thuc_thanh_toan == "PTVNPAY")
+                        await HoanTienVNPayAsync(hoaDon.id_hoa_don);
+
+                    return true;
+                });
+
+                if (!kq)
+                    return (false, "Có lỗi xảy ra khi hoàn thành trả hàng");
+
+                return (true, "Đã hoàn thành trả hàng");
+            }
+            catch (Exception ex)
+            {
+                return (false, $"Đã xảy ra lỗi: {ex.Message}");
+            }
+        }
+
+        public async Task<(bool success, string message)> TuChoiTraHangAsync(Guid idHoaDon, Guid idNhanVien, string lyDoTuChoi)
+        {
+            try
+            {
+                var hoaDon = await _hoaDonRepository.GetByIdWithIncludeAsync(idHoaDon,
+                    q => q.Include(hd => hd.HoaDonChiTiets));
+
+                if (hoaDon == null)
+                    return (false, "Không tìm thấy hóa đơn");
+
+                if (hoaDon.trang_thai_hoa_don != "DangYeuCauTraHang")
+                    return (false, "Hóa đơn không ở trạng thái yêu cầu trả hàng");
+
+                var kq = await _transactionHelper.ExecuteInTransactionAsync(async () =>
+                {
+                    // Cập nhật trạng thái hóa đơn chi tiết
+                    foreach (var chiTiet in hoaDon.HoaDonChiTiets)
+                    {
+                        chiTiet.trang_thai = "DaTuChoiTraHang";
+                        chiTiet.id_nhan_vien_xu_ly = idNhanVien;
+                        chiTiet.ngay_sua = DateTime.Now;
+                        await _hoaDonChiTietRepository.UpdateAsync(chiTiet);
+                    }
+
+                    // Cập nhật trạng thái hóa đơn
+                    hoaDon.trang_thai_hoa_don = "DaTuChoiTraHang";
+                    hoaDon.id_nhan_vien_xu_ly = idNhanVien;
+                    hoaDon.ly_do_tra_hang = $"Đã từ chối trả hàng - Lý do: {lyDoTuChoi} - (Cho yêu cầu có ghi chú: {hoaDon.ly_do_tra_hang})";
+                    hoaDon.ngay_sua = DateTime.Now;
+
+                    var result = await _hoaDonRepository.UpdateAsync(hoaDon);
+                    if (!result)
+                        return false;
+
+                    // Gửi email thông báo cho khách hàng
+                    await GuiEmailCapNhatTrangThaiAsync(idHoaDon, "DaTuChoiTraHang");
+
+                    return true;
+                });
+
+                if (!kq)
+                    return (false, "Có lỗi xảy ra khi từ chối trả hàng");
+
+                return (true, "Đã từ chối yêu cầu trả hàng");
+            }
+            catch (Exception ex)
+            {
+                return (false, $"Đã xảy ra lỗi: {ex.Message}");
+            }
+        }
+
+        private async Task<string> UploadImage(IFormFile file)
+        {
+            if (file == null || file.Length == 0)
+                throw new ArgumentException("File không hợp lệ");
+
+            var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "images", "tra-hang");
+            if (!Directory.Exists(uploadsFolder))
+                Directory.CreateDirectory(uploadsFolder);
+
+            var uniqueFileName = $"{Guid.NewGuid()}_{file.FileName}";
+            var filePath = Path.Combine(uploadsFolder, uniqueFileName);
+
+            using (var stream = new FileStream(filePath, FileMode.Create))
+            {
+                await file.CopyToAsync(stream);
+            }
+
+            return $"/images/tra-hang/{uniqueFileName}";
+        }
     }
 
     public static class TrangThaiDonHangHelper
@@ -2310,8 +3229,10 @@ namespace API.Services.Implementations
             { "DaXacNhan", new[] { "DangChuanBi" } },
             { "DangChuanBi", new[] { "DangGiaoHang" } },
             { "DangGiaoHang", new[] { "DaNhanHang", "DaHuy" } },
-            { "DaNhanHang", new[] { "DaHoanThanh" } },
-            { "ChoTaiQuay", new[] { "DaHoanThanh" } }
+            { "DaNhanHang", new[] { "DaHoanThanh", "DangYeuCauTraHang" } },
+            { "ChoTaiQuay", new[] { "DaHoanThanh" } },
+            { "DangYeuCauTraHang", new[] { "DaXacNhanTraHang", "DaNhanHang" } },
+            { "DaXacNhanTraHang", new[] { "DaTraHang", "DangYeuCauTraHang" } }
         };
 
         public static bool IsValidTransition(string currentStatus, string newStatus)
@@ -2335,6 +3256,9 @@ namespace API.Services.Implementations
             "DaHuy" => "Đã hủy",
             "HetHang" => "Hết hàng",
             "ChoTaiQuay" => "Chờ tại quầy",
+            "DangYeuCauTraHang" => "Đang yêu cầu trả hàng",
+            "DaXacNhanTraHang" => "Đã xác nhận trả hàng",
+            "DaTraHang" => "Đã hoàn thành trả hàng",
             _ => "Không xác định"
         };
 
@@ -2351,6 +3275,9 @@ namespace API.Services.Implementations
             "DaHuy" => "Đơn hàng đã bị hủy",
             "HetHang" => "Đơn hàng không thể thực hiện do hết hàng",
             "ChoTaiQuay" => $"Đơn hàng đang chờ bạn đến nhận tại {cuaHang.ten_cua_hang}",
+            "DangYeuCauTraHang" => $"Yêu cầu trả hàng của bạn đang được xử lý. Vui lòng chờ xác nhận từ {cuaHang.ten_cua_hang}.",
+            "DaXacNhanTraHang" => $"{cuaHang.ten_cua_hang} đã xác nhận yêu cầu trả hàng của bạn. Vui lòng chuẩn bị hàng để trả.",
+            "DaTraHang" => $"Quá trình trả hàng đã hoàn tất. Cảm ơn bạn đã sử dụng dịch vụ của {cuaHang.ten_cua_hang}.",
             _ => "Trạng thái không xác định"
         };
     }

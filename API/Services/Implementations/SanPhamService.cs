@@ -403,7 +403,7 @@ namespace API.Services.Implementations
                                         spctgg.GiamGia != null &&
                                         spctgg.GiamGia.trang_thai == "HoatDong" &&
                                         spctgg.GiamGia.thoi_gian_bat_dau <= DateTime.Now &&
-                                        spctgg.GiamGia.thoi_gian_ket_thuc >= DateTime.Now 
+                                        spctgg.GiamGia.thoi_gian_ket_thuc >= DateTime.Now
                                         )
                                     .Select(spctgg => new GiamGiaAdminDTO
                                     {
@@ -466,7 +466,7 @@ namespace API.Services.Implementations
                         .ThenInclude(spctgg => spctgg.SanPhamChiTiet));
                     foreach (var giamGia in giamGias)
                     {
-                        if (giamGia.thoi_gian_ket_thuc < DateTime.Now )
+                        if (giamGia.thoi_gian_ket_thuc < DateTime.Now)
                         {
                             giamGia.trang_thai = "KhongHoatDong";
                             foreach (var spctgg in giamGia.SanPhamChiTietGiamGias)
@@ -504,7 +504,7 @@ namespace API.Services.Implementations
                             khuyenMai.trang_thai = "KhongHoatDong";
                             foreach (var hoaDon in khuyenMai.HoaDons)
                             {
-                                if (hoaDon.trang_thai_hoa_don == "ChoTaiQuay")
+                                if (hoaDon.trang_thai_hoa_don == "ChoTaiQuay" && hoaDon.trang_thai_hoa_don == "ChuaThanhToan")
                                 {
                                     hoaDon.id_khuyen_mai = null;
                                     hoaDon.so_tien_khuyen_mai = 0;

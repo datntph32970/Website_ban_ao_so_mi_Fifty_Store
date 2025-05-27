@@ -35,6 +35,7 @@ namespace API.DbConects.Entities.Entities_Hoa_Don
         public string trang_thai { get; set; }
         [ForeignKey("NhanVienXuLy")]
         public Guid? id_nhan_vien_xu_ly { get; set; }
+        public Guid? id_giam_gia_cua_sp { get; set; }
         public DateTime? ngay_sua { get; set; }
         public virtual NhanVien? NhanVienXuLy { get; set; }
         public virtual HoaDon? HoaDon { get; set; }
