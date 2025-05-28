@@ -1370,6 +1370,19 @@ namespace API.Controllers.HoaDon_Controller
                         chiTiet.trang_thai = "DaTraHang";
                         await _hoaDonChiTietService.UpdateAsync(chiTiet);
 
+                        if (chiTiet.id_giam_gia_cua_sp != null)
+                        {
+                            // Tìm giảm giá đang được áp dụng cho sản phẩm này
+                            var giamGiaDangApDung = await _giamGiaService.GetByIdAsync(chiTiet.id_giam_gia_cua_sp.Value);
+
+                            if (giamGiaDangApDung != null)
+                            {
+                                // Hoàn lại số lượng đã sử dụng của giảm giá
+                                giamGiaDangApDung.so_luong_da_su_dung -= chiTiet.so_luong;
+                                await _giamGiaService.UpdateAsync(giamGiaDangApDung);
+                            }
+                        }
+
                     }
 
                     // Giảm số lượng sử dụng khuyến mãi nếu có
@@ -1383,34 +1396,6 @@ namespace API.Controllers.HoaDon_Controller
                             if (!updateResult) return false;
                         }
                     }
-                    // Hoàn lại số lượng giảm giá đã sử dụng
-                    var hoaDonChiTiets = await _hoaDonChiTietService.GetByConditionWithIncludeAsync(
-                        hct => hct.id_hoa_don == hoaDon.id_hoa_don,
-                        q => q.Include(hct => hct.SanPhamChiTiet)
-                             .ThenInclude(spct => spct.SanPhamChiTietGiamGias)
-                             .ThenInclude(spgg => spgg.GiamGia)
-                    );
-
-                    foreach (var chiTiet in hoaDonChiTiets)
-                    {
-                        if (chiTiet.SanPhamChiTiet?.SanPhamChiTietGiamGias != null)
-                        {
-                            // Tìm giảm giá đang được áp dụng cho sản phẩm này
-                            var giamGiaDangApDung = chiTiet.SanPhamChiTiet.SanPhamChiTietGiamGias
-                                .FirstOrDefault(gg => gg.GiamGia != null &&
-                                                    gg.GiamGia.trang_thai == "HoatDong" &&
-                                                    gg.GiamGia.thoi_gian_bat_dau <= DateTime.Now &&
-                                                    gg.GiamGia.thoi_gian_ket_thuc >= DateTime.Now);
-
-                            if (giamGiaDangApDung != null)
-                            {
-                                // Hoàn lại số lượng đã sử dụng của giảm giá
-                                giamGiaDangApDung.GiamGia.so_luong_da_su_dung -= chiTiet.so_luong;
-                                await _giamGiaService.UpdateAsync(giamGiaDangApDung.GiamGia);
-                            }
-                        }
-                    }
-
                     // Cập nhật trạng thái hóa đơn
                     hoaDon.trang_thai_hoa_don = "DaTraHang";
                     hoaDon.ngay_sua = DateTime.Now;
