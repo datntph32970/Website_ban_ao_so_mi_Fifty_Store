@@ -1366,6 +1366,9 @@ namespace API.Controllers.HoaDon_Controller
                             var updateResult = await _sanPhamChiTietService.UpdateAsync(chiTiet.SanPhamChiTiet);
                             if (!updateResult) return false;
                         }
+                        chiTiet.trang_thai = "DaTraHang";
+                        await _hoaDonChiTietService.UpdateAsync(chiTiet);
+
                     }
 
                     // Giảm số lượng sử dụng khuyến mãi nếu có
