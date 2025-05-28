@@ -226,6 +226,8 @@ namespace API.Controllers.SanPham_Controller
             if (sanPhamDTO.sanPhamChiTiets == null || sanPhamDTO.sanPhamChiTiets.Count == 0)
                 return BadRequest("Yêu cầu nhập sản phẩm chi tiết");
 
+            const int MAX_QUANTITY = 1000000; // Giới hạn số lượng tối đa
+
             foreach (var spct in sanPhamDTO.sanPhamChiTiets)
             {
                 var mauSac = await _mauSacServices.GetByIdAsync(spct.id_mau_sac);
@@ -238,8 +240,17 @@ namespace API.Controllers.SanPham_Controller
                     return BadRequest($"Yêu cầu nhập mã kích cỡ cho sản phẩm chi tiết {thongTinChiTiet}");
                 if (spct.them_hinh_anh_spcts == null || spct.them_hinh_anh_spcts.Count == 0)
                     return BadRequest($"Yêu cầu chọn hình ảnh cho sản phẩm chi tiết {thongTinChiTiet}");
-                if (spct.so_luong <= 0)
-                    return BadRequest($"Yêu cầu nhập số lượng lớn hơn 0 cho sản phẩm chi tiết {thongTinChiTiet}");
+
+                // Kiểm tra số lượng
+                if (spct.so_luong < 0)
+                    return BadRequest($"Số lượng sản phẩm chi tiết {thongTinChiTiet} không được âm");
+
+                if (spct.so_luong > MAX_QUANTITY)
+                    return BadRequest($"Số lượng sản phẩm chi tiết {thongTinChiTiet} không được vượt quá {MAX_QUANTITY}");
+
+                if (!int.TryParse(spct.so_luong.ToString(), out _))
+                    return BadRequest($"Số lượng sản phẩm chi tiết {thongTinChiTiet} phải là số nguyên");
+
                 if (spct.gia_ban <= 0)
                     return BadRequest($"Yêu cầu nhập giá bán lớn hơn 0 cho sản phẩm chi tiết {thongTinChiTiet}");
                 if (spct.gia_nhap <= 0)
@@ -519,6 +530,8 @@ namespace API.Controllers.SanPham_Controller
             if (sanPhamDTO.sanPhamChiTiets == null || !sanPhamDTO.sanPhamChiTiets.Any())
                 return BadRequest("Danh sách sản phẩm chi tiết không được để trống");
 
+            const int MAX_QUANTITY = 1000000; // Giới hạn số lượng tối đa
+
             foreach (var spct in sanPhamDTO.sanPhamChiTiets)
             {
                 if (spct.id_mau_sac == Guid.Empty || spct.id_kich_co == Guid.Empty)
@@ -528,8 +541,15 @@ namespace API.Controllers.SanPham_Controller
                 var kichCo = await _kichCoServices.GetByIdAsync(spct.id_kich_co);
                 var thongTinChiTiet = $"(Màu sắc: {mauSac?.ten_mau_sac}, Kích cỡ: {kichCo?.ten_kich_co})";
 
+                // Kiểm tra số lượng
                 if (spct.so_luong < 0)
-                    return BadRequest($"Số lượng sản phẩm chi tiết {thongTinChiTiet} phải lớn hơn hoặc bằng 0");
+                    return BadRequest($"Số lượng sản phẩm chi tiết {thongTinChiTiet} không được âm");
+
+                if (spct.so_luong > MAX_QUANTITY)
+                    return BadRequest($"Số lượng sản phẩm chi tiết {thongTinChiTiet} không được vượt quá {MAX_QUANTITY}");
+
+                if (!int.TryParse(spct.so_luong.ToString(), out _))
+                    return BadRequest($"Số lượng sản phẩm chi tiết {thongTinChiTiet} phải là số nguyên");
 
                 if (spct.gia_ban <= 0)
                     return BadRequest($"Giá bán sản phẩm chi tiết {thongTinChiTiet} phải lớn hơn 0");

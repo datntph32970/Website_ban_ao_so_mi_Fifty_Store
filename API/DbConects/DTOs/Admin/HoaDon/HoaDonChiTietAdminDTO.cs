@@ -20,6 +20,7 @@ namespace API.DbConects.DTOs.Admin.HoaDon
         public decimal thanh_tien { get; set; }
         public string? ghi_chu { get; set; }
         public string trang_thai { get; set; }
+        public string id_giam_gia_cua_sp { get; set; }
         public DateTime? ngay_sua { get; set; }
         public string? ten_nhan_vien_xu_ly { get; set; }
         public decimal gia_sp_dang_ban { get; set; }

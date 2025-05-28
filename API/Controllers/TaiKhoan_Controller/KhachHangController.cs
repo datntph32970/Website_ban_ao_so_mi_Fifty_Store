@@ -217,27 +217,38 @@ namespace API.Controllers.TaiKhoan_Controller
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Delete(Guid id)
         {
-
-            var existingKhachHang = await _khachHangServices.GetByIdAsync(id);
-            if (existingKhachHang == null)
-                return NotFound("Không tìm thấy khách hàng");
-
-            var result = await _khachHangServices.DeleteAsync(id);
-            if (result)
-                return Ok("Xóa khách hàng thành công");
-
-            var taikhoan = await _taikhoanServices.GetByIdAsync(id);
-            if (taikhoan == null)
-                return NotFound("Không tìm thấy tài khoản");
-            if (existingKhachHang.id_tai_khoan != null)
+            try
             {
-                var xoataikhoan = await _taikhoanServices.DeleteAsync(existingKhachHang.id_tai_khoan.Value);
-                if (xoataikhoan)
-                    return Ok("Xóa tài khoản thành công");
+                var existingKhachHang = await _khachHangServices.GetByIdWithIncludeAsync(id,
+                    q => q.Include(kh => kh.HoaDons)
+                         .Include(kh => kh.TaiKhoan)
+                );
+
+                if (existingKhachHang == null)
+                    return NotFound("Không tìm thấy khách hàng");
+
+                // Kiểm tra xem khách hàng có hóa đơn không
+                if (existingKhachHang.HoaDons != null && existingKhachHang.HoaDons.Any())
+                    return BadRequest("Không thể xóa khách hàng vì đã có hóa đơn liên quan");
+
+                var result = await _khachHangServices.DeleteAsync(id);
+                if (!result)
+                    return BadRequest("Lỗi khi xóa khách hàng");
+
+                // Nếu khách hàng có tài khoản, xóa tài khoản
+                if (existingKhachHang.id_tai_khoan != null)
+                {
+                    var xoataikhoan = await _taikhoanServices.DeleteAsync(existingKhachHang.id_tai_khoan.Value);
+                    if (!xoataikhoan)
+                        return BadRequest("Lỗi khi xóa tài khoản của khách hàng");
+                }
+
+                return Ok("Xóa khách hàng thành công");
             }
-
-            return BadRequest("Đã xảy ra lỗi khi xóa tài khoản");
-
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Lỗi server: {ex.Message}");
+            }
         }
 
         // PATCH: api/KhachHang/{id}/trangthai
