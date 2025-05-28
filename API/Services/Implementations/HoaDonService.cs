@@ -240,14 +240,6 @@ namespace API.Services.Implementations
         {
             var hoaDons = await _hoaDonRepository.GetAllWithIncludeAsync(
                 q => q.Include(hd => hd.HoaDonChiTiets)
-                     .ThenInclude(hct => hct.SanPhamChiTiet)
-                     .ThenInclude(spct => spct.SanPham)
-                     .Include(hd => hd.HoaDonChiTiets)
-                     .ThenInclude(hct => hct.SanPhamChiTiet)
-                     .ThenInclude(spct => spct.MauSac)
-                     .Include(hd => hd.HoaDonChiTiets)
-                     .ThenInclude(hct => hct.SanPhamChiTiet)
-                     .ThenInclude(spct => spct.KichCo)
                      .Include(hd => hd.KhachHang)
                      .Include(hd => hd.NhanVienXuLy)
                      .Include(hd => hd.KhuyenMai)

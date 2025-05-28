@@ -959,7 +959,8 @@ namespace API.Controllers.HoaDon_Controller
 
                 if (hoaDon.trang_thai_hoa_don != "ChuaThanhToan")
                     return BadRequest("Hóa đơn không ở trạng thái chờ thanh toán");
-
+                if (!hoaDon.HoaDonChiTiets.Any())
+                    return BadRequest("Lỗi nhận sản phẩm trong giỏ hàng vui lòng tải lại!");
                 // Validate order items
                 foreach (var hoaDonChiTiet in hoaDon.HoaDonChiTiets)
                 {
