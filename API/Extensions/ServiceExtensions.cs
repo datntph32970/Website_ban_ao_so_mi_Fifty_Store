@@ -73,19 +73,19 @@ namespace API.Extensions
             services.AddScoped<DoiMatKhauValidationService>();
             services.AddMemoryCache();
 
-            services.AddResponseCompression(options =>
-            {
-                options.EnableForHttps = true;
-                options.Providers.Add<BrotliCompressionProvider>();
-                options.Providers.Add<GzipCompressionProvider>();
-            });
+            // services.AddResponseCompression(options =>
+            // {
+            //     options.EnableForHttps = true;
+            //     options.Providers.Add<BrotliCompressionProvider>();
+            //     options.Providers.Add<GzipCompressionProvider>();
+            // });
         }
 
         public static void AddCustomMiddleware(this IApplicationBuilder app)
         {
             app.UseMiddleware<ExceptionMiddleware>();
             app.UseStaticFiles();
-            app.UseResponseCompression();
+            // app.UseResponseCompression();
             // app.UseResponseCaching();
 
         }
