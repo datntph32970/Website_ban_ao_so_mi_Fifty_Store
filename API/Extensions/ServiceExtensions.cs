@@ -86,7 +86,7 @@ namespace API.Extensions
             app.UseMiddleware<ExceptionMiddleware>();
             app.UseStaticFiles();
             app.UseResponseCompression();
-            app.UseResponseCaching();
+            // app.UseResponseCaching();
 
         }
 
@@ -101,7 +101,8 @@ namespace API.Extensions
                                .AllowAnyMethod()
                                .AllowAnyHeader()
                                .AllowCredentials()
-                               .SetPreflightMaxAge(TimeSpan.FromHours(1));
+                               //    .SetPreflightMaxAge(TimeSpan.FromHours(1))
+                               ;
 
                     });
             });
