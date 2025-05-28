@@ -9,6 +9,7 @@ using API.Services.Interfaces;
 using API.Services.JwtServices;
 using API.Services.Validation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 
@@ -72,13 +73,21 @@ namespace API.Extensions
             services.AddScoped<DoiMatKhauValidationService>();
             services.AddMemoryCache();
 
-
+            services.AddResponseCompression(options =>
+            {
+                options.EnableForHttps = true;
+                options.Providers.Add<BrotliCompressionProvider>();
+                options.Providers.Add<GzipCompressionProvider>();
+            });
         }
 
         public static void AddCustomMiddleware(this IApplicationBuilder app)
         {
             app.UseMiddleware<ExceptionMiddleware>();
             app.UseStaticFiles();
+            app.UseResponseCompression();
+            app.UseResponseCaching();
+
         }
 
         public static void AddCustomCors(this IServiceCollection services)
@@ -91,7 +100,8 @@ namespace API.Extensions
                         builder.WithOrigins("http://localhost:3000", "https://localhost:3000")
                                .AllowAnyMethod()
                                .AllowAnyHeader()
-                               .AllowCredentials();
+                               .AllowCredentials()
+                               .SetPreflightMaxAge(TimeSpan.FromHours(1));
 
                     });
             });
