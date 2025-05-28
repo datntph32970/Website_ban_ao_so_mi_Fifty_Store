@@ -253,15 +253,17 @@ namespace API.Services.Implementations
                 var hoaDonChiTiets = await MapHoaDonChiTietsAsync(hoaDon.HoaDonChiTiets);
                 var tongTienDonHang = await TinhTongTienDonHang(hoaDon.id_hoa_don);
                 var (tongTienSauKhuyenMai, giaTriKhuyenMai) = await CapNhatTongTienVaGiaTriKhuyenMaiChoHoaDon(hoaDon);
+                // string tenKH = !string.IsNullOrEmpty(hoaDon.ten_khach_hang) ? hoaDon.ten_khach_hang : (!string.IsNullOrEmpty(hoaDon.KhachHang?.ten_khach_hang) ? hoaDon.KhachHang?.ten_khach_hang : "Khách lẻ");
+                // string sdtKH = !string.IsNullOrEmpty(hoaDon.sdt_khach_hang) ? hoaDon.sdt_khach_hang : (!string.IsNullOrEmpty(hoaDon.KhachHang?.so_dien_thoai) ? hoaDon.KhachHang?.so_dien_thoai : "");
 
                 result.Add(new HoaDonAdminDTO
                 {
                     id_hoa_don = hoaDon.id_hoa_don,
                     ma_hoa_don = hoaDon.ma_hoa_don,
                     id_khach_hang = hoaDon.id_khach_hang != null ? hoaDon.id_khach_hang : null,
-                    ten_khach_hang = !string.IsNullOrEmpty(hoaDon.ten_khach_hang) ? hoaDon.ten_khach_hang : (!string.IsNullOrEmpty(hoaDon.KhachHang?.ten_khach_hang) ? hoaDon.KhachHang?.ten_khach_hang : "Khách lẻ"),
+                    ten_khach_hang = hoaDon.ten_khach_hang,
                     ten_nguoi_xu_ly = hoaDon.NhanVienXuLy?.ten_nhan_vien ?? "N/A",
-                    sdt_khach_hang = !string.IsNullOrEmpty(hoaDon.sdt_khach_hang) ? hoaDon.sdt_khach_hang : (!string.IsNullOrEmpty(hoaDon.KhachHang?.so_dien_thoai) ? hoaDon.KhachHang?.so_dien_thoai : ""),
+                    sdt_khach_hang = hoaDon.sdt_khach_hang,
                     dia_chi_nhan_hang = hoaDon.id_khach_hang != null ? hoaDon.dia_chi_nhan_hang : null,
                     ghi_chu = hoaDon.ghi_chu,
                     loai_hoa_don = hoaDon.loai_hoa_don,
@@ -301,14 +303,6 @@ namespace API.Services.Implementations
         {
             var hoaDon = await _hoaDonRepository.GetByIdWithIncludeAsync(id,
                 q => q.Include(hd => hd.HoaDonChiTiets)
-                     .ThenInclude(hct => hct.SanPhamChiTiet)
-                     .ThenInclude(spct => spct.SanPham)
-                     .Include(hd => hd.HoaDonChiTiets)
-                     .ThenInclude(hct => hct.SanPhamChiTiet)
-                     .ThenInclude(spct => spct.MauSac)
-                     .Include(hd => hd.HoaDonChiTiets)
-                     .ThenInclude(hct => hct.SanPhamChiTiet)
-                     .ThenInclude(spct => spct.KichCo)
                      .Include(hd => hd.KhachHang)
                      .Include(hd => hd.NhanVienXuLy)
                      .Include(hd => hd.KhuyenMai)
