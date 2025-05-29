@@ -2716,7 +2716,7 @@ namespace API.Services.Implementations
                 if (hoaDon == null)
                     return (false, "Không tìm thấy hóa đơn");
 
-                if (hoaDon.trang_thai_hoa_don != "DaHuy")
+                if (hoaDon.trang_thai_hoa_don != "DaHuy" && hoaDon.trang_thai_hoa_don != "DaTraHang")
                     return (false, "Chỉ có thể hoàn tiền cho đơn hàng đã hủy");
 
                 // Cập nhật trạng thái hóa đơn
