@@ -979,12 +979,6 @@ namespace API.Controllers.HoaDon_Controller
                     {
                         hoaDonChiTiet.id_giam_gia_cua_sp = giamGiaDangApDung.id_giam_gia;
                         await _hoaDonChiTietService.UpdateAsync(hoaDonChiTiet);
-                        var ggSP = await _giamGiaService.GetByIdAsync(giamGiaDangApDung.id_giam_gia);
-                        if (ggSP != null)
-                        {
-                            ggSP.so_luong_da_su_dung += hoaDonChiTiet.so_luong;
-                            await _giamGiaService.UpdateAsync(ggSP);
-                        }
                     }
                 }
 
