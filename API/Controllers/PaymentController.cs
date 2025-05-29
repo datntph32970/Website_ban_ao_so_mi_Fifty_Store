@@ -126,13 +126,6 @@ namespace API.Controllers
                     {
                         foreach (var chiTiet in hoaDonWithDetails.HoaDonChiTiets)
                         {
-                            // Cập nhật số lượng sản phẩm
-                            if (chiTiet.SanPhamChiTiet != null)
-                            {
-                                chiTiet.SanPhamChiTiet.so_luong -= chiTiet.so_luong;
-                                await _sanPhamChiTietService.UpdateAsync(chiTiet.SanPhamChiTiet);
-                            }
-
                             chiTiet.trang_thai = "DangChoXuLy";
                             chiTiet.ngay_sua = DateTime.Now;
                             await _hoaDonChiTietService.UpdateAsync(chiTiet);
