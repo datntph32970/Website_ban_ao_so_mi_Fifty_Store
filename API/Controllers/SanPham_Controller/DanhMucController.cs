@@ -56,7 +56,7 @@ namespace API.Controllers.SanPham_Controller
 
             // Kiểm tra trùng tên
             var existingDanhMuc = await _danhMucServices.GetAllAsync();
-            if (existingDanhMuc.Any(x => x.ten_danh_muc.ToLower() == danhMucDTO.ten_danh_muc.ToLower()))
+            if (existingDanhMuc.Any(x => x.ten_danh_muc.Trim().ToLower() == danhMucDTO.ten_danh_muc.Trim().ToLower()))
                 return BadRequest("Tên danh mục đã tồn tại");
 
             var danhmuc = new DanhMuc
@@ -89,7 +89,7 @@ namespace API.Controllers.SanPham_Controller
 
             // Kiểm tra trùng tên với danh mục khác
             var existingDanhMuc = _danhMucServices.GetAllAsync().Result
-                .FirstOrDefault(x => x.id_danh_muc != id && x.ten_danh_muc.ToLower() == danhMucDTO.ten_danh_muc.ToLower());
+                .FirstOrDefault(x => x.id_danh_muc != id && x.ten_danh_muc.Trim().ToLower() == danhMucDTO.ten_danh_muc.Trim().ToLower());
             if (existingDanhMuc != null)
                 return BadRequest("Tên danh mục đã tồn tại");
 

@@ -137,7 +137,7 @@ namespace API.Controllers.TaiKhoan_Controller
                 return BadRequest(ModelState);
 
             var existingKhachHang = await _khachHangServices.ExistsAsync(kh =>
-                kh.so_dien_thoai == khachHangDTO.so_dien_thoai);
+                kh.so_dien_thoai.Trim().ToLower() == khachHangDTO.so_dien_thoai.Trim().ToLower());
 
             if (existingKhachHang)
                 return BadRequest("Khách hàng đã tồn tại với số điện thoại này");

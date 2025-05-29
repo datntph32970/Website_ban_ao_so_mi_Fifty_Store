@@ -121,6 +121,8 @@ namespace API.Controllers.TaiKhoan_Controller
             // Validate required fields
             if (string.IsNullOrEmpty(themNhanVienAdminDTO.ten_dang_nhap))
                 return BadRequest("Tên đăng nhập không được để trống");
+            if (themNhanVienAdminDTO.ten_dang_nhap.Contains(" "))
+                return BadRequest("Tên đăng nhập không được chứa khoảng trắng");
 
             if (string.IsNullOrEmpty(themNhanVienAdminDTO.ho_ten))
                 return BadRequest("Họ tên không được để trống");
@@ -136,7 +138,8 @@ namespace API.Controllers.TaiKhoan_Controller
 
             if (string.IsNullOrEmpty(themNhanVienAdminDTO.cccd))
                 return BadRequest("CCCD không được để trống");
-
+            if (themNhanVienAdminDTO.cccd.Contains(" "))
+                return BadRequest("Căn cước công dân không được chứa khoảng trắng");
             if (string.IsNullOrEmpty(themNhanVienAdminDTO.dia_chi))
                 return BadRequest("Địa chỉ không được để trống");
 
@@ -159,16 +162,19 @@ namespace API.Controllers.TaiKhoan_Controller
                 return BadRequest("Ngày sinh không hợp lệ");
 
             // Check if username already exists
-            var existingUser = await _taiKhoanService.ExistsAsync(x => x.ten_dang_nhap == themNhanVienAdminDTO.ten_dang_nhap);
+            var existingUser = await _taiKhoanService.ExistsAsync(x =>
+                x.ten_dang_nhap.Trim().ToLower() == themNhanVienAdminDTO.ten_dang_nhap.Trim().ToLower());
             if (existingUser)
                 return BadRequest("Tên đăng nhập đã tồn tại");
-            var existingEmail = await _nhanVienService.ExistsAsync(x => x.email == themNhanVienAdminDTO.email);
+            var existingEmail = await _nhanVienService.ExistsAsync(x =>
+                x.email.Trim().ToLower() == themNhanVienAdminDTO.email.Trim().ToLower());
             if (existingEmail)
                 return BadRequest("Email đã tồn tại");
-            var existingPhone = await _nhanVienService.ExistsAsync(x => x.so_dien_thoai == themNhanVienAdminDTO.so_dien_thoai);
+            var existingPhone = await _nhanVienService.ExistsAsync(x =>
+                x.so_dien_thoai.Trim().ToLower() == themNhanVienAdminDTO.so_dien_thoai.Trim().ToLower());
             if (existingPhone)
                 return BadRequest("Số điện thoại đã tồn tại");
-            var existingCCCD = await _nhanVienService.ExistsAsync(x => x.cccd == themNhanVienAdminDTO.cccd);
+            var existingCCCD = await _nhanVienService.ExistsAsync(x => x.cccd.Trim() == themNhanVienAdminDTO.cccd.Trim());
             if (existingCCCD)
                 return BadRequest("CCCD đã tồn tại");
 
@@ -516,7 +522,7 @@ namespace API.Controllers.TaiKhoan_Controller
                 if (nhanVien.email != capNhatThongTinDTO.email)
                 {
                     var existingEmail = await _nhanVienService.ExistsAsync(x =>
-                        x.email == capNhatThongTinDTO.email &&
+                        x.email.Trim().ToLower() == capNhatThongTinDTO.email.Trim().ToLower() &&
                         x.id_nhan_vien != nhanVien.id_nhan_vien);
                     if (existingEmail)
                         return BadRequest("Email đã tồn tại");
@@ -526,7 +532,7 @@ namespace API.Controllers.TaiKhoan_Controller
                 if (nhanVien.so_dien_thoai != capNhatThongTinDTO.so_dien_thoai)
                 {
                     var existingPhone = await _nhanVienService.ExistsAsync(x =>
-                        x.so_dien_thoai == capNhatThongTinDTO.so_dien_thoai &&
+                        x.so_dien_thoai.Trim().ToLower() == capNhatThongTinDTO.so_dien_thoai.Trim().ToLower() &&
                         x.id_nhan_vien != nhanVien.id_nhan_vien);
                     if (existingPhone)
                         return BadRequest("Số điện thoại đã tồn tại");
@@ -536,7 +542,7 @@ namespace API.Controllers.TaiKhoan_Controller
                 if (nhanVien.cccd != capNhatThongTinDTO.cccd)
                 {
                     var existingCCCD = await _nhanVienService.ExistsAsync(x =>
-                        x.cccd == capNhatThongTinDTO.cccd &&
+                        x.cccd.Trim().ToLower() == capNhatThongTinDTO.cccd.Trim().ToLower() &&
                         x.id_nhan_vien != nhanVien.id_nhan_vien);
                     if (existingCCCD)
                         return BadRequest("CCCD đã tồn tại");

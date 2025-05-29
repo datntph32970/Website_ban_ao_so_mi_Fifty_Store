@@ -103,7 +103,7 @@ namespace API.Controllers.KhuyenMai_Controller
 
             // Kiểm tra trùng tên
             var existingKhuyenMai = await _khuyenMaiServices.GetAllAsync();
-            if (existingKhuyenMai.Any(x => x.ten_khuyen_mai.ToLower() == khuyenMaiDTO.ten_khuyen_mai.ToLower()))
+            if (existingKhuyenMai.Any(x => x.ten_khuyen_mai.ToLower().Trim() == khuyenMaiDTO.ten_khuyen_mai.ToLower().Trim()))
                 return BadRequest("Tên khuyến mãi đã tồn tại");
 
             // Kiểm tra thời gian
@@ -179,7 +179,7 @@ namespace API.Controllers.KhuyenMai_Controller
 
             // Kiểm tra trùng tên với khuyến mãi khác
             var existingKhuyenMaiKhac = await _khuyenMaiServices.GetAllAsync();
-            if (existingKhuyenMaiKhac.Any(x => x.id_khuyen_mai != id && x.ten_khuyen_mai.ToLower() == khuyenMaiDTO.ten_khuyen_mai.ToLower()))
+            if (existingKhuyenMaiKhac.Any(x => x.id_khuyen_mai != id && x.ten_khuyen_mai.Trim().ToLower() == khuyenMaiDTO.ten_khuyen_mai.Trim().ToLower()))
                 return BadRequest("Tên khuyến mãi đã tồn tại");
             if (khuyenMaiDTO.ma_khuyen_mai == null || khuyenMaiDTO.ma_khuyen_mai == "")
                 return BadRequest("Mã khuyến mãi không được để trống");

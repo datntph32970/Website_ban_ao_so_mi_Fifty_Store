@@ -48,7 +48,7 @@ namespace API.Controllers.SanPham_Controller
 
             // Kiểm tra trùng tên
             var existingXuatXu = _xuatXuServices.GetAllAsync().Result
-                .FirstOrDefault(x => x.ten_xuat_xu.ToLower() == xuatXuDTO.ten_xuat_xu.ToLower());
+                .FirstOrDefault(x => x.ten_xuat_xu.Trim().ToLower() == xuatXuDTO.ten_xuat_xu.Trim().ToLower());
             if (existingXuatXu != null)
                 return BadRequest("Tên xuất xứ đã tồn tại");
 
@@ -81,7 +81,7 @@ namespace API.Controllers.SanPham_Controller
 
             // Kiểm tra trùng tên với xuất xứ khác
             var existingXuatXu = _xuatXuServices.GetAllAsync().Result
-                .FirstOrDefault(x => x.id_xuat_xu != id && x.ten_xuat_xu.ToLower() == xuatXuDTO.ten_xuat_xu.ToLower());
+                .FirstOrDefault(x => x.id_xuat_xu != id && x.ten_xuat_xu.Trim().ToLower() == xuatXuDTO.ten_xuat_xu.Trim().ToLower());
             if (existingXuatXu != null)
                 return BadRequest("Tên xuất xứ đã tồn tại");
 

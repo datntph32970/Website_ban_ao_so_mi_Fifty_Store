@@ -51,7 +51,7 @@ namespace API.Controllers.SanPham_Controller
 
             // Kiểm tra trùng tên
             var existingThuongHieu = await _thuongHieuService.GetAllAsync();
-            if (existingThuongHieu.Any(x => x.ten_thuong_hieu.ToLower() == thuongHieuDTO.ten_thuong_hieu.ToLower()))
+            if (existingThuongHieu.Any(x => x.ten_thuong_hieu.Trim().ToLower() == thuongHieuDTO.ten_thuong_hieu.Trim().ToLower()))
                 return BadRequest("Tên thương hiệu đã tồn tại");
 
             var thuongHieu = new ThuongHieu
@@ -82,7 +82,7 @@ namespace API.Controllers.SanPham_Controller
 
             // Kiểm tra trùng tên với thương hiệu khác
             var existingThuongHieu = await _thuongHieuService.GetAllAsync();
-            if (existingThuongHieu.Any(x => x.id_thuong_hieu != id && x.ten_thuong_hieu.ToLower() == thuongHieuDTO.ten_thuong_hieu.ToLower()))
+            if (existingThuongHieu.Any(x => x.id_thuong_hieu != id && x.ten_thuong_hieu.Trim().ToLower() == thuongHieuDTO.ten_thuong_hieu.Trim().ToLower()))
                 return BadRequest("Tên thương hiệu đã tồn tại");
 
             var thuongHieu = await _thuongHieuService.GetByIdAsync(id);

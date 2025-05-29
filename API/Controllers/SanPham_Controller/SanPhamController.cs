@@ -205,7 +205,8 @@ namespace API.Controllers.SanPham_Controller
             if (sanPhamDTO.url_anh_mac_dinh == null)
                 return BadRequest("chọn hình ảnh mặc định cho sản phẩm");
 
-            var existingTenSanPham = await _sanPhamServices.ExistsAsync(x => x.ten_san_pham == sanPhamDTO.ten_san_pham);
+            var existingTenSanPham = await _sanPhamServices.ExistsAsync(x =>
+                x.ten_san_pham.Trim().ToLower() == sanPhamDTO.ten_san_pham.Trim().ToLower());
             if (existingTenSanPham)
                 return BadRequest("Tên sản phẩm đã tồn tại");
 
@@ -517,7 +518,7 @@ namespace API.Controllers.SanPham_Controller
                 return NotFound("Không tìm thấy sản phẩm");
 
             var existingTenSanPham = await _sanPhamServices.ExistsAsync(x =>
-                x.ten_san_pham == sanPhamDTO.ten_san_pham &&
+                x.ten_san_pham.Trim().ToLower() == sanPhamDTO.ten_san_pham.Trim().ToLower() &&
                 x.id_san_pham != id);
             if (existingTenSanPham)
                 return BadRequest("Tên sản phẩm đã tồn tại");

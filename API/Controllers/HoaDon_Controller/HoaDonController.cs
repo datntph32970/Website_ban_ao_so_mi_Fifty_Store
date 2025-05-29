@@ -966,6 +966,8 @@ namespace API.Controllers.HoaDon_Controller
                 {
                     if (hoaDonChiTiet.SanPhamChiTiet.so_luong < hoaDonChiTiet.so_luong)
                         return BadRequest($"Sản phẩm {hoaDonChiTiet.ten_san_pham} - {hoaDonChiTiet.ten_mau_sac} - {hoaDonChiTiet.ten_kich_co} không đủ số lượng");
+                    if (hoaDonChiTiet.SanPhamChiTiet.trang_thai != "HoatDong")
+                        return BadRequest($"Sản phẩm {hoaDonChiTiet.ten_san_pham} - {hoaDonChiTiet.ten_mau_sac} - {hoaDonChiTiet.ten_kich_co} đã ngừng kinh doanh");
 
                     // Tìm giảm giá đang được áp dụng cho sản phẩm này
                     var giamGiaDangApDung = hoaDonChiTiet.SanPhamChiTiet.SanPhamChiTietGiamGias

@@ -54,7 +54,7 @@ namespace API.Controllers.SanPham_Controller
 
             // Kiểm tra trùng tên
             var existingMauSac = await _mauSacServices.GetAllAsync();
-            if (existingMauSac.Any(x => x.ten_mau_sac.ToLower() == mauSacDTO.ten_mau_sac.ToLower()))
+            if (existingMauSac.Any(x => x.ten_mau_sac.Trim().ToLower() == mauSacDTO.ten_mau_sac.Trim().ToLower()))
                 return BadRequest("Tên màu sắc đã tồn tại");
 
             var result = await _mauSacServices.ExecuteInTransactionAsync(async () =>
@@ -89,7 +89,7 @@ namespace API.Controllers.SanPham_Controller
 
             // Kiểm tra trùng tên với màu sắc khác
             var existingMauSac = await _mauSacServices.GetAllAsync();
-            if (existingMauSac.Any(x => x.id_mau_sac != id && x.ten_mau_sac.ToLower() == mauSacDTO.ten_mau_sac.ToLower()))
+            if (existingMauSac.Any(x => x.id_mau_sac != id && x.ten_mau_sac.Trim().ToLower() == mauSacDTO.ten_mau_sac.Trim().ToLower()))
                 return BadRequest("Tên màu sắc đã tồn tại");
 
             var result = await _mauSacServices.ExecuteInTransactionAsync(async () =>

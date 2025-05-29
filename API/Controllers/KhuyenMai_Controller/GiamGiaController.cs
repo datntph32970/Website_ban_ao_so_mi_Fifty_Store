@@ -243,7 +243,7 @@ namespace API.Controllers.KhuyenMai_Controller
                 if (giamGia.kieu_giam_gia == "SoTien" && giamGia.gia_tri_giam <= 0)
                     return BadRequest("Giá trị giảm theo số tiền phải lớn hơn 0");
 
-                var existingGiamGia = await _giamGiaServices.ExistsAsync(g => g.ten_giam_gia == giamGia.ten_giam_gia);
+                var existingGiamGia = await _giamGiaServices.ExistsAsync(g => g.ten_giam_gia.Trim() == giamGia.ten_giam_gia.Trim());
                 if (existingGiamGia)
                     return BadRequest("Tên giảm giá đã tồn tại");
 
@@ -366,7 +366,7 @@ namespace API.Controllers.KhuyenMai_Controller
 
 
                 var existingGiamGiaKhacTen = await _giamGiaServices.ExistsAsync(g =>
-                    g.ten_giam_gia.ToLower() == giamGiaDTO.ten_giam_gia.ToLower() &&
+                    g.ten_giam_gia.ToLower().Trim() == giamGiaDTO.ten_giam_gia.ToLower().Trim() &&
                     g.id_giam_gia != id);
 
                 if (existingGiamGiaKhacTen)

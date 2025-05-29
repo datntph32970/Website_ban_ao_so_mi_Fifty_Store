@@ -49,7 +49,7 @@ namespace API.Controllers.SanPham_Controller
 
             // Kiểm tra trùng tên
             var existingChatLieu = await _chatLieuServices.GetAllAsync();
-            if (existingChatLieu.Any(x => x.ten_chat_lieu.ToLower() == chatLieuDTO.ten_chat_lieu.ToLower()))
+            if (existingChatLieu.Any(x => x.ten_chat_lieu.ToLower().Trim() == chatLieuDTO.ten_chat_lieu.ToLower().Trim()))
                 return BadRequest("Tên chất liệu đã tồn tại");
 
             var chatLieu = new ChatLieu
@@ -82,7 +82,7 @@ namespace API.Controllers.SanPham_Controller
 
             // Kiểm tra trùng tên với chất liệu khác
             var existingChatLieu = _chatLieuServices.GetAllAsync().Result
-                .FirstOrDefault(x => x.id_chat_lieu != id && x.ten_chat_lieu.ToLower() == chatLieuDTO.ten_chat_lieu.ToLower());
+                .FirstOrDefault(x => x.id_chat_lieu != id && x.ten_chat_lieu.ToLower().Trim() == chatLieuDTO.ten_chat_lieu.ToLower().Trim());
             if (existingChatLieu != null)
                 return BadRequest("Tên chất liệu đã tồn tại");
 

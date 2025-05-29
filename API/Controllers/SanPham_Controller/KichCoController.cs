@@ -54,7 +54,7 @@ namespace API.Controllers.SanPham_Controller
 
             // Kiểm tra trùng tên
             var existingKichCo = await _kichCoServices.GetAllAsync();
-            if (existingKichCo.Any(x => x.ten_kich_co.ToLower() == kichCoDTO.ten_kich_co.ToLower()))
+            if (existingKichCo.Any(x => x.ten_kich_co.ToLower().Trim() == kichCoDTO.ten_kich_co.ToLower().Trim()))
                 return BadRequest("Tên kích cỡ đã tồn tại");
 
             var result = await _kichCoServices.ExecuteInTransactionAsync(async () =>
@@ -89,7 +89,7 @@ namespace API.Controllers.SanPham_Controller
 
             // Kiểm tra trùng tên với kích cỡ khác
             var existingKichCo = await _kichCoServices.GetAllAsync();
-            if (existingKichCo.Any(x => x.id_kich_co != id && x.ten_kich_co.ToLower() == kichCoDTO.ten_kich_co.ToLower()))
+            if (existingKichCo.Any(x => x.id_kich_co != id && x.ten_kich_co.ToLower().Trim() == kichCoDTO.ten_kich_co.ToLower().Trim()))
                 return BadRequest("Tên kích cỡ đã tồn tại");
 
             var result = await _kichCoServices.ExecuteInTransactionAsync(async () =>

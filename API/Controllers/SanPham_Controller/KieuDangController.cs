@@ -51,7 +51,7 @@ namespace API.Controllers.SanPham_Controller
 
             // Kiểm tra trùng tên
             var existingKieuDang = _kieuDangServices.GetAllAsync().Result
-                .FirstOrDefault(x => x.ten_kieu_dang.ToLower() == kieuDangDTO.ten_kieu_dang.ToLower());
+                .FirstOrDefault(x => x.ten_kieu_dang.Trim().ToLower() == kieuDangDTO.ten_kieu_dang.Trim().ToLower());
             if (existingKieuDang != null)
                 return BadRequest("Tên kiểu dáng đã tồn tại");
 
@@ -84,7 +84,7 @@ namespace API.Controllers.SanPham_Controller
 
             // Kiểm tra trùng tên với kiểu dáng khác
             var existingKieuDang = _kieuDangServices.GetAllAsync().Result
-                .FirstOrDefault(x => x.id_kieu_dang != id && x.ten_kieu_dang.ToLower() == kieuDangDTO.ten_kieu_dang.ToLower());
+                .FirstOrDefault(x => x.id_kieu_dang != id && x.ten_kieu_dang.Trim().ToLower() == kieuDangDTO.ten_kieu_dang.Trim().ToLower());
             if (existingKieuDang != null)
                 return BadRequest("Tên kiểu dáng đã tồn tại");
 

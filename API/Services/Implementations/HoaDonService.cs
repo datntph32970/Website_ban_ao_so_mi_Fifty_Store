@@ -225,7 +225,7 @@ namespace API.Services.Implementations
             // Chỉ cập nhật cho hóa đơn có trạng thái ChoTaiQuay hoặc ChuaThanhToan
             if (hoaDon.trang_thai_hoa_don != "ChoTaiQuay" && hoaDon.trang_thai_hoa_don != "ChuaThanhToan")
             {
-                return (hoaDon.tong_tien_don_hang - hoaDon.so_tien_khuyen_mai + (hoaDon.phi_van_chuyen ?? 0) ?? 0, hoaDon.so_tien_khuyen_mai ?? 0);
+                return (Math.Max(0, hoaDon.tong_tien_don_hang - hoaDon.so_tien_khuyen_mai + (hoaDon.phi_van_chuyen ?? 0) ?? 0), Math.Max(0, hoaDon.so_tien_khuyen_mai ?? 0));
             }
 
             var (tongTienSauKhuyenMai, giaTriKhuyenMai) = await CapNhatTongTienVaGiaTriKhuyenMai(hoaDon.id_hoa_don);
@@ -790,40 +790,41 @@ namespace API.Services.Implementations
             var tongTienDonHang = await TinhTongTienDonHang(id_hoa_don);
             if (hoaDon.trang_thai_hoa_don != "ChoTaiQuay" && hoaDon.trang_thai_hoa_don != "ChuaThanhToan")
             {
-                return (hoaDon.tong_tien_don_hang - hoaDon.so_tien_khuyen_mai ?? 0, hoaDon.so_tien_khuyen_mai ?? 0);
+                return (Math.Max(0m, hoaDon.tong_tien_don_hang - hoaDon.so_tien_khuyen_mai ?? 0), hoaDon.so_tien_khuyen_mai ?? 0);
             }
             decimal giaTriKhuyenMai = 0;
-            decimal tongTienSauKhuyenMai = tongTienDonHang + (hoaDon.phi_van_chuyen ?? 0);
+            decimal phiVanChuyen = hoaDon.phi_van_chuyen ?? 0m;
+            decimal tongTienSauKhuyenMai = tongTienDonHang + phiVanChuyen;
 
             if (hoaDon.id_khuyen_mai == null)
             {
-                hoaDon.tong_tien_don_hang = tongTienDonHang;
+                hoaDon.tong_tien_don_hang = Math.Max(0m, tongTienDonHang);
                 hoaDon.so_tien_khuyen_mai = giaTriKhuyenMai;
-                hoaDon.tong_tien_phai_thanh_toan = tongTienSauKhuyenMai;
+                hoaDon.tong_tien_phai_thanh_toan = Math.Max(0m, tongTienSauKhuyenMai);
                 await _hoaDonRepository.UpdateAsync(hoaDon);
-                return (Math.Max(0, tongTienSauKhuyenMai), giaTriKhuyenMai);
+                return (Math.Max(0m, tongTienSauKhuyenMai), giaTriKhuyenMai);
             }
 
             var khuyenMai = await _khuyenMaiRepository.GetByIdAsync(hoaDon.id_khuyen_mai.Value);
             if (khuyenMai == null)
             {
-                hoaDon.tong_tien_don_hang = tongTienDonHang;
+                hoaDon.tong_tien_don_hang = Math.Max(0m, tongTienDonHang);
 
                 hoaDon.so_tien_khuyen_mai = giaTriKhuyenMai;
-                hoaDon.tong_tien_phai_thanh_toan = tongTienSauKhuyenMai;
+                hoaDon.tong_tien_phai_thanh_toan = Math.Max(0m, tongTienSauKhuyenMai);
                 await _hoaDonRepository.UpdateAsync(hoaDon);
-                return (Math.Max(0, tongTienSauKhuyenMai), giaTriKhuyenMai);
+                return (Math.Max(0m, tongTienSauKhuyenMai), giaTriKhuyenMai);
             }
             if (khuyenMai.kieu_khuyen_mai == "PhanTram")
             {
                 giaTriKhuyenMai = tongTienDonHang * khuyenMai.gia_tri_giam / 100;
                 giaTriKhuyenMai = Math.Min(giaTriKhuyenMai, khuyenMai.gia_tri_giam_toi_da);
-                tongTienSauKhuyenMai = tongTienDonHang - giaTriKhuyenMai + (hoaDon.phi_van_chuyen ?? 0);
+                tongTienSauKhuyenMai = tongTienDonHang - giaTriKhuyenMai + phiVanChuyen;
             }
             else if (khuyenMai.kieu_khuyen_mai == "TienMat")
             {
                 giaTriKhuyenMai = khuyenMai.gia_tri_giam;
-                tongTienSauKhuyenMai = tongTienDonHang - giaTriKhuyenMai + (hoaDon.phi_van_chuyen ?? 0);
+                tongTienSauKhuyenMai = tongTienDonHang - giaTriKhuyenMai + (hoaDon.phi_van_chuyen ?? 0m);
 
             }
             if (tongTienSauKhuyenMai < 0)
@@ -838,7 +839,7 @@ namespace API.Services.Implementations
             hoaDon.so_tien_khuyen_mai = giaTriKhuyenMai;
             hoaDon.tong_tien_phai_thanh_toan = tongTienSauKhuyenMai;
             await _hoaDonRepository.UpdateAsync(hoaDon);
-            return (Math.Max(0, tongTienSauKhuyenMai), giaTriKhuyenMai);
+            return (Math.Max(0m, tongTienSauKhuyenMai), giaTriKhuyenMai);
         }
         //tạo mã hóa đơn
         private async Task<string> TaoMaHoaDon()
@@ -1076,6 +1077,11 @@ namespace API.Services.Implementations
             hoaDon.ngay_sua = DateTime.Now;
             foreach (var hct in hoaDon.HoaDonChiTiets)
             {
+                if (hct.SanPhamChiTiet.trang_thai != "HoatDong")
+                    return (false, $"Sản phẩm {hct.SanPhamChiTiet.SanPham.ten_san_pham} - {hct.SanPhamChiTiet.MauSac.ten_mau_sac} - {hct.SanPhamChiTiet.KichCo.ten_kich_co} đã ngừng kinh doanh");
+
+                if (hct.SanPhamChiTiet.so_luong < hct.so_luong)
+                    return (false, $"Sản phẩm {hct.SanPhamChiTiet.SanPham.ten_san_pham} - {hct.SanPhamChiTiet.MauSac.ten_mau_sac} - {hct.SanPhamChiTiet.KichCo.ten_kich_co} không đủ số lượng");
                 hct.trang_thai = "DaThanhToan";
                 hct.ngay_sua = DateTime.Now;
                 hct.gia_tri_khuyen_mai_cua_hoa_don_cho_hdct = hoaDon.so_tien_khuyen_mai.HasValue ? hoaDon.so_tien_khuyen_mai.Value / hoaDon.HoaDonChiTiets.Count : 0;
@@ -1309,6 +1315,10 @@ namespace API.Services.Implementations
                     if (chiTiet.SanPhamChiTiet.so_luong < chiTiet.so_luong)
                     {
                         return (false, $"Sản phẩm {chiTiet.ten_san_pham} - {chiTiet.ten_mau_sac} - {chiTiet.ten_kich_co} không đủ số lượng trong kho");
+                    }
+                    if (chiTiet.SanPhamChiTiet.trang_thai != "HoatDong")
+                    {
+                        return (false, $"Sản phẩm {chiTiet.ten_san_pham} - {chiTiet.ten_mau_sac} - {chiTiet.ten_kich_co} đã ngừng kinh doanh");
                     }
                 }
 
